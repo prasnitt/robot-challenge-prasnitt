@@ -10,6 +10,7 @@
 ## Assumptions
 
 1. There is only one robot in warehouse.
+2. In the command sequence there could be multiple spaces in between each command. E.g. `N   S E W ` is valid command
 
 
 # Problem Statement
