@@ -36,7 +36,7 @@ If the robot starts in the south-west corner of the warehouse then the following
 
 ## Robot SDK Interface 
 
-The robot provids a set of low level SDK functions in GO to control its movement. 
+The robot provides a set of low level SDK functions in GO to control its movement. 
 
 ```
 type Warehouse interface {
