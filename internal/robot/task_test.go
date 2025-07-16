@@ -15,13 +15,12 @@ func TestNewTask(t *testing.T) {
 		want    *RobotTask
 		wantErr bool
 	}{
+		{"Must not have empty command", args{""}, nil, true},
 		{"Valid Commands", args{"N E S W"}, &RobotTask{RawCmdSequence: "N E S W", Commands: []RobotCommand{North, East, South, West}, State: Pending}, false},
-		{"Invalid Command", args{"N X S W"}, nil, true},
-		{"Empty Command must fail", args{""}, nil, true},
+		{"Invalid Command must fail", args{"N X S W"}, nil, true},
 		{"Single Command", args{"N"}, &RobotTask{RawCmdSequence: "N", Commands: []RobotCommand{North}, State: Pending}, false},
-		{"Multiple Commands", args{"N E W S"}, &RobotTask{RawCmdSequence: "N E W S", Commands: []RobotCommand{North, East, West, South}, State: Pending}, false},
 		{"Whitespace Only", args{"   "}, nil, true},
-		{"Extra Spaces are not valid", args{"N   E   S W"}, nil, true},
+		{"Extra Spaces are valid", args{"  N   E   S W "}, &RobotTask{RawCmdSequence: "  N   E   S W ", Commands: []RobotCommand{North, East, South, West}, State: Pending}, false},
 		{"Lower case command is not allowed", args{"n e s w"}, nil, true},
 	}
 	for _, tt := range tests {

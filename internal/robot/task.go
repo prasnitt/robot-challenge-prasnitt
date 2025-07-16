@@ -40,19 +40,31 @@ func NewTask(rawCmdSequence string) (*RobotTask, error) {
 	}, nil
 }
 
+// removeEmptyStrings removes empty strings from a slice of strings.
+// This is useful for cleaning up command sequences that may have extra spaces.
+func removeEmptyStrings(slice []string) []string {
+	var result []string
+	for _, s := range slice {
+		if strings.TrimSpace(s) != "" {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
 // parseCommands takes a raw command sequence string and converts it into a slice of RobotCommand.
 // It returns an error if any command in the sequence is invalid.
 func parseCommands(raw string) ([]RobotCommand, error) {
 	parts := strings.Split(raw, " ")
+	parts = removeEmptyStrings(parts) // Remove any empty strings from the split
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("no commands provided")
+	}
 
 	commands := make([]RobotCommand, 0, len(parts))
 
-	if len(parts) == 0 {
-		return nil, fmt.Errorf("command sequence cannot be empty")
-	}
-
 	for _, p := range parts {
-		switch p {
+		switch strings.TrimSpace(p) {
 		case "N":
 			commands = append(commands, North)
 		case "W":
