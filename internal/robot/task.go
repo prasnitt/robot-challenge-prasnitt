@@ -64,7 +64,7 @@ func parseCommands(raw string) ([]RobotCommand, error) {
 	commands := make([]RobotCommand, 0, len(parts))
 
 	for _, p := range parts {
-		switch strings.TrimSpace(p) {
+		switch p {
 		case "N":
 			commands = append(commands, North)
 		case "W":
