@@ -1,28 +1,70 @@
 # Robot Warehouse
 
-## Scenario
 
-We are installing a new type of robot into our (hypothetical) warehouse as part of an automation project.  As part of this project, there are various software components which need to be developed.
+## Project Stages
 
-## About the Robots
+1. Initial Setup
+2. Command Parsing
+3. REST API (planned)
 
-For convenience the robot moves along a grid in the roof of the warehouse and we have made sure that all of our warehouses are built so that the dimensions of the grid are 10 by 10; objects in the warehouse, including the robots, are always aligned with the grid, so object locations' may be treated as integer coordinates.  We've also made sure that all our warehouses are aligned along north-south and east-west axes. The system operates on a cartesian coordinate map that aligns to the warehouse's physical dimensions: point (0, 0) indicates the most south-west and (10, 10) indicates the most north-east.
+## Assumptions
 
-Each robot operates by being given 'tasks' which each consist of a string of 'commands':
+1. There is only one robot in warehouse.
 
-All of the commands to the robot consist of a single capital letter and different commands are optionally delineated by whitespace.
+
+# Problem Statement
+
+We have installed a robot in our warehouse and now we need to send it commands to control it. We need you to implement the high level RESTful APIs, which can be called from a ground control station.
+
+For convenience the robot moves along a grid in the roof of the warehouse and we have made sure that all of our warehouses are built so that the dimensions of the grid are 10 by 10. We've also made sure that all our warehouses are aligned along north-south and east-west axes. The robot also builds an internal x y coordinate map that aligns to the warehouse's physical dimensions. On the map, point (0, 0) indicates the most south-west and (10, 10) indicates the most north-east.
+
+All of the commands to the robot consist of a single capital letter and different commands are delineated by whitespace.
 
 The robot should accept the following commands:
 
-- N move one unit north
-- W move one unit west
-- E move one unit east
-- S move one unit south
+- N move north
+- W move west
+- E move east
+- S move south
 
-Example command sequences:
+Example command sequences
+The command sequence: "N E S W" will move the robot in a full square, returning it to where it started.
 
-* The command sequence: `"N E S W"` will move the robot in a full square, returning it to where it started.
+If the robot starts in the south-west corner of the warehouse then the following commands will move it to the middle of the warehouse.
 
-* If the robot starts in the south-west corner of the warehouse then the following commands will move it to the middle of the warehouse: `"N E N E N E N E"`
+"N E N E N E N E"
 
-The robot will only perform a single task at a time: if additional tasks are given to the robot while is busy performing a task, those additional tasks are queued up, and will be executed once the preceding task is completed (or aborted for some reason).  Each task is identified with a unique string ID, and a task which is either in progress or enqueued can be aborted/cancelled at any time.  If the robot is unable to execute a particular command (for instance, because the command would cause the robot to run into the edges of the warehouse grid) then an error occurs, and the entire task is aborted.
+## Robot SDK Interface 
+
+The robot provids a set of low level SDK functions in GO to control its movement. 
+
+```
+type Warehouse interface {
+	Robots() []Robot
+}
+
+type Robot interface {
+	EnqueueTask(commands string) (taskID string, position chan RobotState, err chan error) 
+
+	CancelTask(taskID string) error
+
+	CurrentState() RobotState
+}
+
+type RobotState struct {
+	X uint
+	Y uint
+	HasCrate bool
+}
+```
+
+## Requirements
+- Create a RESTful API to accept a series of commands to the robot. 
+- Make sure that the robot doesn't try to move outside the warehouse.
+- Create a RESTful API to report the command series's execution status.
+- Create a RESTful API cancel the command series.
+- The RESTful service should be written in Golang.
+
+## Challenge
+- The Robot SDK is still under development, you need to find a way to prove your API logic is working.
+- The ground control station wants to be notified as soon as the command sequence completed. Please provide a high level design overview how you can achieve it. This overview is not expected to be hugely detailed but should clearly articulate the fundamental concept in your design.
