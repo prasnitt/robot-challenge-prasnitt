@@ -22,21 +22,25 @@ type RobotTask struct {
 	RawCmdSequence string
 	Commands       []RobotCommand
 	State          TaskState
+	DeltaX         int // Change in X coordinate
+	DeltaY         int // Change in Y coordinate
 }
 
 // NewTask creates a new RobotTask from a raw command sequence string.
 // It parses the string into individual RobotCommand values and initializes the task state to Pending.
 func NewTask(rawCmdSequence string) (*RobotTask, error) {
-	commands, err := parseCommands(rawCmdSequence)
+	commands, deltaX, deltaY, err := parseCommands(rawCmdSequence)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RobotTask{
 		ID:             uuid.New().String(),
-		RawCmdSequence: rawCmdSequence,
+		RawCmdSequence: rawCmdSequence, // Store the original command sequence for reference
 		Commands:       commands,
 		State:          Pending,
+		DeltaX:         deltaX,
+		DeltaY:         deltaY,
 	}, nil
 }
 
@@ -54,11 +58,12 @@ func removeEmptyStrings(slice []string) []string {
 
 // parseCommands takes a raw command sequence string and converts it into a slice of RobotCommand.
 // It returns an error if any command in the sequence is invalid.
-func parseCommands(raw string) ([]RobotCommand, error) {
+func parseCommands(raw string) ([]RobotCommand, int, int, error) {
 	parts := strings.Split(raw, " ")
 	parts = removeEmptyStrings(parts) // Remove any empty strings from the split
+	deltaX, deltaY := 0, 0
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("no commands provided")
+		return nil, deltaX, deltaY, fmt.Errorf("no commands provided")
 	}
 
 	commands := make([]RobotCommand, 0, len(parts))
@@ -66,16 +71,20 @@ func parseCommands(raw string) ([]RobotCommand, error) {
 	for _, p := range parts {
 		switch p {
 		case "N":
+			deltaY++
 			commands = append(commands, North)
 		case "W":
+			deltaX--
 			commands = append(commands, West)
 		case "E":
+			deltaX++
 			commands = append(commands, East)
 		case "S":
+			deltaY--
 			commands = append(commands, South)
 		default:
-			return nil, fmt.Errorf("invalid command: %s", p)
+			return nil, deltaX, deltaY, fmt.Errorf("invalid command: %s", p)
 		}
 	}
-	return commands, nil
+	return commands, deltaX, deltaY, nil
 }
