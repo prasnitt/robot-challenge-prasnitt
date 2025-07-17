@@ -18,12 +18,11 @@ const (
 )
 
 type RobotTask struct {
-	ID             string
-	RawCmdSequence string
-	Commands       []RobotCommand
-	State          TaskState
-	DeltaX         int // Change in X coordinate
-	DeltaY         int // Change in Y coordinate
+	ID       string
+	Commands []RobotCommand
+	State    TaskState
+	DeltaX   int // Change in X coordinate
+	DeltaY   int // Change in Y coordinate
 }
 
 // NewTask creates a new RobotTask from a raw command sequence string.
@@ -35,12 +34,11 @@ func NewTask(rawCmdSequence string) (*RobotTask, error) {
 	}
 
 	return &RobotTask{
-		ID:             uuid.New().String(),
-		RawCmdSequence: rawCmdSequence, // Store the original command sequence for reference
-		Commands:       commands,
-		State:          Pending,
-		DeltaX:         deltaX,
-		DeltaY:         deltaY,
+		ID:       uuid.New().String(),
+		Commands: commands,
+		State:    Pending,
+		DeltaX:   deltaX,
+		DeltaY:   deltaY,
 	}, nil
 }
 
