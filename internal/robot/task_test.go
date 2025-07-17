@@ -16,9 +16,9 @@ func TestNewTask(t *testing.T) {
 		wantErr bool
 	}{
 		{"Must not have empty command", args{""}, nil, true},
-		{"Valid Commands reach to same poistion", args{"N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
-		{"Valid Commands reach to poistion 3, 3 ", args{"N E N E N E"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, North, East}, State: Pending, DeltaX: 3, DeltaY: 3}, false},
-		{"Valid Commands reach to poistion 1, 1 ", args{"N E N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, South, West}, State: Pending, DeltaX: 1, DeltaY: 1}, false},
+		{"Valid Commands reach to same position", args{"N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
+		{"Valid Commands reach to position 3, 3 ", args{"N E N E N E"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, North, East}, State: Pending, DeltaX: 3, DeltaY: 3}, false},
+		{"Valid Commands reach to position 1, 1 ", args{"N E N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, South, West}, State: Pending, DeltaX: 1, DeltaY: 1}, false},
 		{"Invalid Command must fail", args{"N X S W"}, nil, true},
 		{"Single Command", args{"N"}, &RobotTask{Commands: []RobotCommand{North}, State: Pending, DeltaY: 1}, false},
 		{"Whitespace Only", args{"   "}, nil, true},
