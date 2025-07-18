@@ -77,7 +77,7 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 	s.state.Tasks[task.ID] = *task
 	s.taskIdQueue <- task.ID // Send the task to the queue
 
-	log.Printf("Task %s enqueued with commands: '%s' delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
+	log.Printf("Task %s enqueued with commands: '%s', delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
 
 	return task.ID, nil
 }
@@ -112,7 +112,10 @@ func (s *Service) CancelTask(taskID string) error {
 }
 
 func (s *Service) HandleTask(taskId string) {
+	s.mu.RLock()
 	task, exists := s.state.Tasks[taskId]
+	s.mu.RUnlock()
+
 	if !exists {
 		log.Printf("Task %s not found in service state", taskId)
 		return // Skip processing if the task does not exist

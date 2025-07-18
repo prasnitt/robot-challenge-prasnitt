@@ -16,10 +16,11 @@ type CommandDuration time.Duration
 const defaultDelayBetweenCommands = CommandDuration(time.Second) // Default delay between commands is 1 second
 
 func (rc RobotCommands) String() string {
-	commandsStr := ""
+	var builder strings.Builder
 	for _, cmd := range rc {
-		commandsStr += cmd.String() + " "
+		builder.WriteString(cmd.String() + " ")
 	}
+	commandsStr := builder.String()
 
 	return strings.TrimRight(commandsStr, " ")
 }
