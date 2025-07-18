@@ -5,14 +5,16 @@ import (
 	"github.com/prasnitt/robot-challenge-prasnitt/internal/robot"
 )
 
-func SetupRouter(r *gin.Engine, robot robot.RobotService) {
+func SetupRouter(router *gin.Engine, robot robot.RobotService) {
 
-	apiGroup := r.Group("/api/v1")
+	apiGroup := router.Group("/api/v1")
 	{
 		// Experimental endpoint for testing
 		apiGroup.GET("/hello", HelloWorld)
 
 		// API endpoints for robot tasks
 		apiGroup.POST("/tasks", AddTask(robot))
+
+		apiGroup.GET("/state", GetState(robot))
 	}
 }

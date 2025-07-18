@@ -36,3 +36,10 @@ func AddTask(service robot.RobotService) gin.HandlerFunc {
 		c.JSON(http.StatusAccepted, gin.H{"task_id": taskID})
 	}
 }
+
+func GetState(service robot.RobotService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		state := service.CurrentState()
+		c.JSON(http.StatusOK, state)
+	}
+}

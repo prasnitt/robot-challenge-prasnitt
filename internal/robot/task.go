@@ -1,6 +1,7 @@
 package robot
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,20 @@ import (
 )
 
 type TaskState int
+type RobotCommands []RobotCommand
+
+func (rc RobotCommands) String() string {
+	commandsStr := ""
+	for _, cmd := range rc {
+		commandsStr += cmd.String() + " "
+	}
+
+	return strings.TrimRight(commandsStr, " ")
+}
+
+func (rc RobotCommands) MarshalJSON() ([]byte, error) {
+	return json.Marshal(rc.String())
+}
 
 // TaskState represents the state of a robot task.
 const (
@@ -17,12 +32,34 @@ const (
 	Completed
 )
 
+// Convert TaskState to string for easy representation.
+func (s TaskState) String() string {
+	switch s {
+	case Pending:
+		return "Pending"
+	case InProgress:
+		return "InProgress"
+	case Aborted:
+		return "Aborted"
+	case Completed:
+		return "Completed"
+	default:
+		return fmt.Sprintf("Unknown State %d", s)
+	}
+}
+
+func (s TaskState) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
 type RobotTask struct {
-	ID       string
-	Commands []RobotCommand
-	State    TaskState
-	DeltaX   int // Change in X coordinate
-	DeltaY   int // Change in Y coordinate
+	ID       string        `json:"id"`        // Unique identifier for the task
+	Commands RobotCommands `json:"commmands"` // List of commands to be executed by the robot
+	State    TaskState     `json:"state"`     // Current state of the task
+
+	// DeltaX and DeltaY represent the change in robot's position after executing the commands
+	DeltaX int `json:"-"` // Change in X coordinate
+	DeltaY int `json:"-"` // Change in Y coordinate
 }
 
 // NewTask creates a new RobotTask from a raw command sequence string.

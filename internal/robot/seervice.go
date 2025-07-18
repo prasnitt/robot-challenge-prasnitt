@@ -51,6 +51,8 @@ func (s *Service) Start() {
 
 // GetState returns the current state of the robot service.
 func (s *Service) CurrentState() ServiceState {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.state
 }
 
@@ -72,6 +74,7 @@ func (s *Service) EnqueueTask(commands string) (string, error) {
 	return task.ID, nil
 }
 
+// TODO: Implement task cancellation logic
 func (s *Service) CancelTask(taskID string) error {
 
 	return nil // Placeholder for task cancellation logic
