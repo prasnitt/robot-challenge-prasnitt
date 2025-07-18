@@ -7,8 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prasnitt/robot-challenge-prasnitt/internal/api"
 	"github.com/prasnitt/robot-challenge-prasnitt/internal/robot"
+
+	_ "github.com/prasnitt/robot-challenge-prasnitt/docs" // Import the generated docs package
+	swaggerFiles "github.com/swaggo/files"                // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger"            // gin-swagger middleware
 )
 
+// @title Robot Warehouse System
+// @version 1.0
+// @description This is a REST API for managing robot tasks in a warehouse system.
+// @contact.name Prashant Agrawal
+// @contact.email prashant.eee.nitt@gmail.com
+
+// @host localhost:8080
+// @BasePath /api/v1
 func main() {
 	log.Println("Robot Warehouse System Starting...")
 
@@ -31,6 +43,10 @@ func main() {
 
 	// Setup API routes
 	api.SetupRouter(router, robotService)
+
+	// Swagger documentation route
+	// The url points to the API definition (docs.json or docs.yaml)
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Start the server
 	// TODO: Change the port to a configurable value

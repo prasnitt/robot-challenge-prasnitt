@@ -7,9 +7,17 @@ import (
 	"github.com/prasnitt/robot-challenge-prasnitt/internal/robot"
 )
 
+// AddTaskRequest represents the request body for adding a new robot task.
+// @Description Request body for adding a new robot task
 type AddTaskRequest struct {
-	Commands             string `json:"commands" binding:"required"`
-	DelayBetweenCommands string `json:"delay_between_commands" binding:"omitempty"`
+	Commands             string `json:"commands" binding:"required" example:"N E S W"`           // Commands to be executed by the robot
+	DelayBetweenCommands string `json:"delay_between_commands" binding:"omitempty" example:"1s"` // Delay between executing commands, optional
+}
+
+// ErrorResponse represents a generic error response.
+// @Description Generic error response.
+type ErrorResponse struct {
+	Error string `json:"error" example:"Job not found"`
 }
 
 // TODO: remove this function after testing
@@ -19,17 +27,27 @@ func HelloWorld(c *gin.Context) {
 	})
 }
 
+// AddTask handles the request to add a new robot task.
+// @Summary Add a new robot task
+// @Description Add a new robot task with commands and optional delay
+// @Accept json
+// @Produce json
+// @Param request body AddTaskRequest true "Add Task Request"
+// @Success 202 {object} map[string]string "Task ID"
+// @Failure 400 {object} ErrorResponse "Error message"
+// @Router /robot/tasks [post]
+// @Tags Robot Tasks
 func AddTask(service robot.RobotService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req AddTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
 
 		taskID, err := service.EnqueueTask(req.Commands, req.DelayBetweenCommands)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
 
@@ -48,13 +66,13 @@ func CancelTask(service robot.RobotService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
 		if taskID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "task ID is required"})
 			return
 		}
 
 		err := service.CancelTask(taskID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
 

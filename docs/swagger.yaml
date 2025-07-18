@@ -1,0 +1,61 @@
+basePath: /api/v1
+definitions:
+  api.AddTaskRequest:
+    description: Request body for adding a new robot task
+    properties:
+      commands:
+        description: Commands to be executed by the robot
+        example: N E S W
+        type: string
+      delay_between_commands:
+        description: Delay between executing commands, optional
+        example: 1s
+        type: string
+    required:
+    - commands
+    type: object
+  api.ErrorResponse:
+    description: Generic error response.
+    properties:
+      error:
+        example: Job not found
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: prashant.eee.nitt@gmail.com
+    name: Prashant Agrawal
+  description: This is a REST API for managing robot tasks in a warehouse system.
+  title: Robot Warehouse System
+  version: "1.0"
+paths:
+  /robot/tasks:
+    post:
+      consumes:
+      - application/json
+      description: Add a new robot task with commands and optional delay
+      parameters:
+      - description: Add Task Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.AddTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Task ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Add a new robot task
+      tags:
+      - Robot Tasks
+swagger: "2.0"

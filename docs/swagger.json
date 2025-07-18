@@ -1,0 +1,90 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a REST API for managing robot tasks in a warehouse system.",
+        "title": "Robot Warehouse System",
+        "contact": {
+            "name": "Prashant Agrawal",
+            "email": "prashant.eee.nitt@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/robot/tasks": {
+            "post": {
+                "description": "Add a new robot task with commands and optional delay",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Robot Tasks"
+                ],
+                "summary": "Add a new robot task",
+                "parameters": [
+                    {
+                        "description": "Add Task Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AddTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Task ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AddTaskRequest": {
+            "description": "Request body for adding a new robot task",
+            "type": "object",
+            "required": [
+                "commands"
+            ],
+            "properties": {
+                "commands": {
+                    "description": "Commands to be executed by the robot",
+                    "type": "string",
+                    "example": "N E S W"
+                },
+                "delay_between_commands": {
+                    "description": "Delay between executing commands, optional",
+                    "type": "string",
+                    "example": "1s"
+                }
+            }
+        },
+        "api.ErrorResponse": {
+            "description": "Generic error response.",
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Job not found"
+                }
+            }
+        }
+    }
+}
