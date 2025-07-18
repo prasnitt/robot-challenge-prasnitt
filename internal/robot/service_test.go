@@ -43,3 +43,8 @@ func TestNewService(t *testing.T) {
 		t.Error("NewService() should initialize empty tasks map")
 	}
 }
+
+// TODO: Add more tests for the Service methods
+// - TestEnqueueTask
+// - TestCancelTask
+// - TestCurrentState

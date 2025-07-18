@@ -43,3 +43,28 @@ func GetState(service robot.RobotService) gin.HandlerFunc {
 		c.JSON(http.StatusOK, state)
 	}
 }
+
+func CancelTask(service robot.RobotService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		taskID := c.Param("id")
+		if taskID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "task ID is required"})
+			return
+		}
+
+		err := service.CancelTask(taskID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusAccepted, gin.H{"message": "Task cancellation requested successfully"})
+	}
+}
+
+// TODO: Add unit tests for the API handlers
+//  Case 1: Call state endpoint and check if the state is returned correctly wit initial values
+//  Case 2: Call add task endpoint with valid commands and check if the task is added
+//  Case 3: Call add task endpoint with invalid commands and check if the error is returned
+//  Case 4: Call add task endpoint with empty commands and check if the error is returned
+//  Case 5: Call add task endpoint with valid commands and check if the task ID is returned

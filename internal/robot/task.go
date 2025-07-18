@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type TaskState int
 type RobotCommands []RobotCommand
+type CommandDuration time.Duration
+
+const defaultDelayBetweenCommands = CommandDuration(time.Second) // Default delay between commands is 1 second
 
 func (rc RobotCommands) String() string {
 	commandsStr := ""
@@ -24,12 +28,20 @@ func (rc RobotCommands) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rc.String())
 }
 
+func (cd CommandDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(cd).String())
+}
+
 // TaskState represents the state of a robot task.
 const (
 	Pending TaskState = iota
 	InProgress
 	Aborted
+	RequestCancellation // Represents a task that has been requested for cancellation via API
+	Canceled            // Represents a task that has been cancelled after cancellation request
 	Completed
+
+	Invalid // Represents an invalid state, can be used for error handling
 )
 
 // Convert TaskState to string for easy representation.
@@ -41,8 +53,14 @@ func (s TaskState) String() string {
 		return "InProgress"
 	case Aborted:
 		return "Aborted"
+	case RequestCancellation:
+		return "RequestCancellation"
+	case Canceled:
+		return "Canceled"
 	case Completed:
 		return "Completed"
+	case Invalid:
+		return "Invalid"
 	default:
 		return fmt.Sprintf("Unknown State %d", s)
 	}
@@ -53,9 +71,10 @@ func (s TaskState) MarshalJSON() ([]byte, error) {
 }
 
 type RobotTask struct {
-	ID       string        `json:"id"`        // Unique identifier for the task
-	Commands RobotCommands `json:"commmands"` // List of commands to be executed by the robot
-	State    TaskState     `json:"state"`     // Current state of the task
+	ID                   string          `json:"id"`                     // Unique identifier for the task
+	Commands             RobotCommands   `json:"commmands"`              // List of commands to be executed by the robot
+	State                TaskState       `json:"state"`                  // Current state of the task
+	DelayBetweenCommands CommandDuration `json:"delay_between_commands"` // Delay between executing commands
 
 	// DeltaX and DeltaY represent the change in robot's position after executing the commands
 	DeltaX int `json:"-"` // Change in X coordinate
@@ -73,9 +92,11 @@ func NewTask(rawCmdSequence string) (*RobotTask, error) {
 	return &RobotTask{
 		ID:       uuid.New().String(),
 		Commands: commands,
-		State:    Pending,
-		DeltaX:   deltaX,
-		DeltaY:   deltaY,
+		// TODO: get the delay from user input, if not provided, use default
+		DelayBetweenCommands: defaultDelayBetweenCommands,
+		State:                Pending,
+		DeltaX:               deltaX,
+		DeltaY:               deltaY,
 	}, nil
 }
 
