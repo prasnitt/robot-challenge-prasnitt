@@ -49,9 +49,6 @@ func (cd CommandDuration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(cd.String())
 }
 
-// TaskState represents the state of a robot task.
-// @Description Current state of the robot task
-// @Enum Pending InProgress Aborted RequestCancellation Canceled Completed Invalid
 const (
 	Pending TaskState = iota
 	InProgress
