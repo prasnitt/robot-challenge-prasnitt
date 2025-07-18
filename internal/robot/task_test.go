@@ -3,11 +3,13 @@ package robot
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewTask(t *testing.T) {
 	type args struct {
-		rawCmdSequence string
+		rawCmdSequence       string
+		delayBetweenCommands string // New argument for delay between commands
 	}
 	tests := []struct {
 		name    string
@@ -15,19 +17,23 @@ func TestNewTask(t *testing.T) {
 		want    *RobotTask
 		wantErr bool
 	}{
-		{"Must not have empty command", args{""}, nil, true},
-		{"Valid Commands reach to same position", args{"N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
-		{"Valid Commands reach to position 3, 3 ", args{"N E N E N E"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, North, East}, State: Pending, DeltaX: 3, DeltaY: 3}, false},
-		{"Valid Commands reach to position 1, 1 ", args{"N E N E S W"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, South, West}, State: Pending, DeltaX: 1, DeltaY: 1}, false},
-		{"Invalid Command must fail", args{"N X S W"}, nil, true},
-		{"Single Command", args{"N"}, &RobotTask{Commands: []RobotCommand{North}, State: Pending, DeltaY: 1}, false},
-		{"Whitespace Only", args{"   "}, nil, true},
-		{"Extra Spaces are valid", args{"  N   E   S W "}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
-		{"Lower case command is not allowed", args{"n e s w"}, nil, true},
+		{"Must not have empty command", args{"", ""}, nil, true},
+		{"Valid Commands reach to same position", args{"N E S W", ""}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
+		{"Valid Commands reach to position 3, 3 ", args{"N E N E N E", ""}, &RobotTask{Commands: []RobotCommand{North, East, North, East, North, East}, State: Pending, DeltaX: 3, DeltaY: 3}, false},
+		{"Valid Commands reach to position 1, 1 ", args{"N E N E S W", ""}, &RobotTask{Commands: []RobotCommand{North, East, North, East, South, West}, State: Pending, DeltaX: 1, DeltaY: 1}, false},
+		{"Invalid Command must fail", args{"N X S W", ""}, nil, true},
+		{"Single Command", args{"N", ""}, &RobotTask{Commands: []RobotCommand{North}, State: Pending, DeltaY: 1}, false},
+		{"Whitespace Only", args{"   ", ""}, nil, true},
+		{"Extra Spaces are valid", args{"  N   E   S W ", ""}, &RobotTask{Commands: []RobotCommand{North, East, South, West}, State: Pending, DeltaX: 0, DeltaY: 0}, false},
+		{"Lower case command is not allowed", args{"n e s w", ""}, nil, true},
+
+		// Test with delay between commands
+		{"Valid Commands with delay", args{"N E N E N E", "100ms"}, &RobotTask{Commands: []RobotCommand{North, East, North, East, North, East}, State: Pending, DeltaX: 3, DeltaY: 3, DelayBetweenCommands: CommandDuration(100 * time.Millisecond)}, false},
+		{"Invalid delay format", args{"N E N E", "invalid"}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewTask(tt.args.rawCmdSequence)
+			got, err := NewTask(tt.args.rawCmdSequence, tt.args.delayBetweenCommands)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTask() error = %v, wantErr %v", err, tt.wantErr)
 				return
