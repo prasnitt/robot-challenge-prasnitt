@@ -76,7 +76,7 @@ func (s TaskState) MarshalJSON() ([]byte, error) {
 
 type RobotTask struct {
 	ID                   string          `json:"id"`                     // Unique identifier for the task
-	Commands             RobotCommands   `json:"commmands"`              // List of commands to be executed by the robot
+	Commands             RobotCommands   `json:"commands"`               // List of commands to be executed by the robot
 	State                TaskState       `json:"state"`                  // Current state of the task
 	DelayBetweenCommands CommandDuration `json:"delay_between_commands"` // Delay between executing commands
 
