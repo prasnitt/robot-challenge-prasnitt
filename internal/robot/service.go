@@ -47,6 +47,7 @@ func (s *Service) Start() {
 		select {
 		case <-s.ctx.Done():
 			log.Println("Robot Service Stopping...")
+			return // Exit if the context is cancelled
 		case task := <-s.taskQueue:
 			s.HandleTask(task) // Process incoming tasks
 		}
@@ -122,10 +123,11 @@ func (s *Service) HandleTask(task RobotTask) {
 			return // Stop processing the task
 		}
 
-		time.Sleep(time.Duration(task.DelayBetweenCommands)) // Simulate delay between commands
+		// Simulate delay between commands
+		time.Sleep(time.Duration(task.DelayBetweenCommands))
 
 		// Execute each command in the task
-		err = s.ExecuteRobotCommand(cmd, task.DelayBetweenCommands) // Execute each command in the task
+		err = s.ExecuteRobotCommand(cmd)
 
 		if err != nil {
 			log.Printf("Error executing command '%s' for task %s: %v", cmd, task.ID, err)
@@ -143,7 +145,7 @@ func (s *Service) HandleTask(task RobotTask) {
 }
 
 // Execute a robot command and update the robot's position
-func (s *Service) ExecuteRobotCommand(cmd RobotCommand, durationBetweenCmds CommandDuration) error {
+func (s *Service) ExecuteRobotCommand(cmd RobotCommand) error {
 
 	robotState := s.GetRobotState() // Get the current robot state
 	switch cmd {
@@ -213,8 +215,8 @@ func (s *Service) SetRobotState(state RobotState) {
 func (s *Service) IsTaskValid(task RobotTask) bool {
 	robotState := s.GetRobotState()
 
-	destinationX := (int)(robotState.X) + task.DeltaX
-	destinationY := (int)(robotState.Y) + task.DeltaY
+	destinationX := int(robotState.X) + task.DeltaX
+	destinationY := int(robotState.Y) + task.DeltaY
 
 	if destinationX < 0 || destinationX >= warehouseSize || destinationY < 0 || destinationY >= warehouseSize {
 		log.Printf("Task %s is invalid: out of warehouse boundaries", task.ID)
