@@ -80,6 +80,9 @@ type RobotTask struct {
 	State                TaskState       `json:"state"`                  // Current state of the task
 	DelayBetweenCommands CommandDuration `json:"delay_between_commands"` // Delay between executing commands
 
+	SequenceNum int    `json:"sequence_num"` // Sequence number for the task, used for ordering tasks in the queue
+	Error       string `json:"error"`        // Error message if the task fails
+
 	// DeltaX and DeltaY represent the change in robot's position after executing the commands
 	DeltaX int `json:"-"` // Change in X coordinate
 	DeltaY int `json:"-"` // Change in Y coordinate

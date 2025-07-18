@@ -9,7 +9,7 @@ import (
 func TestNewTask(t *testing.T) {
 	type args struct {
 		rawCmdSequence       string
-		delayBetweenCommands string // New argument for delay between commands
+		delayBetweenCommands string
 	}
 	tests := []struct {
 		name    string

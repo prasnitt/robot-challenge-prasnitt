@@ -6,8 +6,9 @@ type RobotState struct {
 }
 
 type ServiceState struct {
-	RobotState RobotState           `json:"robot_state"` // Current state of the robot
-	Tasks      map[string]RobotTask `json:"tasks"`       // Map of task IDs to RobotTask objects
+	RobotState   RobotState           `json:"robot_state"`        // Current state of the robot
+	Tasks        map[string]RobotTask `json:"tasks"`              // Map of task IDs to RobotTask objects
+	CurTaskCount int                  `json:"current_task_count"` // Current number of tasks in the service
 }
 
 func NewServiceState() ServiceState {

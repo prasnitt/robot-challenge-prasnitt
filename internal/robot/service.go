@@ -70,6 +70,10 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// Update the service state with the new task
+
+	s.state.CurTaskCount++                  // Increment the current task count
+	task.SequenceNum = s.state.CurTaskCount // Assign a sequence number to the task
+
 	s.state.Tasks[task.ID] = *task
 	s.taskIdQueue <- task.ID // Send the task to the queue
 
@@ -92,10 +96,12 @@ func (s *Service) CancelTask(taskID string) error {
 		// Update the task state to RequestCancellation
 		log.Printf("Task %s is in progress, requesting cancellation", taskID)
 		task.State = RequestCancellation
+
 		s.state.Tasks[taskID] = task // Update the task in the state
 	case Pending:
 		// If the task is pending, we simply mark it as Canceled
 		log.Printf("Task %s is pending, marking as Canceled", taskID)
+		task.Error = "Pending Task cancelled by user"
 		task.State = Canceled
 		s.state.Tasks[taskID] = task // Update the task in the state
 	default:
@@ -125,6 +131,7 @@ func (s *Service) HandleTask(taskId string) {
 	if !s.IsTaskValid(task) {
 		s.UpdateTaskState(task.ID, Aborted)
 		log.Printf("Task %s is invalid and cannot be processed", task.ID)
+		s.UpdateTaskError(task.ID, "Task is invalid: out of warehouse boundaries, marking as Aborted")
 		return
 	}
 
@@ -142,6 +149,7 @@ func (s *Service) HandleTask(taskId string) {
 
 		if state == RequestCancellation {
 			log.Printf("Task %s has been requested for cancellation", task.ID)
+			s.UpdateTaskError(task.ID, "Task cancellation requested by user")
 			s.UpdateTaskState(task.ID, Canceled)
 			return // Stop processing the task
 		}
@@ -154,6 +162,7 @@ func (s *Service) HandleTask(taskId string) {
 
 		if err != nil {
 			log.Printf("Error executing command '%s' for task %s: %v", cmd, task.ID, err)
+			s.UpdateTaskError(task.ID, fmt.Sprintf("Error executing command '%s': %v", cmd, err))
 			s.UpdateTaskState(task.ID, Aborted) // Update the task state to Aborted
 			return                              // Stop processing the task on error
 		}
@@ -217,6 +226,19 @@ func (s *Service) UpdateTaskState(taskID string, state TaskState) {
 		log.Printf("Task %s updated to state: %s", taskID, state)
 	} else {
 		log.Printf("Task %s not found for state update", taskID)
+	}
+}
+
+// update error in the task
+func (s *Service) UpdateTaskError(taskID string, errMsg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if task, exists := s.state.Tasks[taskID]; exists {
+		task.Error = errMsg          // Update the error message in the task
+		s.state.Tasks[taskID] = task // Update the task in the state
+		log.Printf("Task %s updated with error: %s", taskID, errMsg)
+	} else {
+		log.Printf("Task %s not found for error update", taskID)
 	}
 }
 
