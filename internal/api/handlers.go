@@ -21,16 +21,18 @@ func AddTask(service robot.RobotService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req AddTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+
+				"error": err.Error()})
 			return
 		}
 
 		taskID, err := service.EnqueueTask(req.Commands)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"task_id": taskID})
+		c.JSON(http.StatusAccepted, gin.H{"task_id": taskID})
 	}
 }

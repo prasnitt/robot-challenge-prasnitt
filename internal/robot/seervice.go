@@ -3,6 +3,7 @@ package robot
 import (
 	"context"
 	"log"
+	"sync"
 )
 
 const (
@@ -20,6 +21,7 @@ type RobotService interface {
 }
 
 type Service struct {
+	mu        sync.RWMutex    `json:"-"` // Mutex for concurrent access
 	ctx       context.Context // Context for cancellation
 	state     ServiceState    // Current state of the robot service
 	taskQueue chan RobotTask  // Channel for incoming tasks
@@ -58,8 +60,8 @@ func (s *Service) EnqueueTask(commands string) (string, error) {
 		return "", err
 	}
 
-	s.state.Mu.Lock()
-	defer s.state.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.taskQueue <- *task // Send the task to the queue
 
 	// Update the service state with the new task
