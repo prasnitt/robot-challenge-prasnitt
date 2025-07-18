@@ -12,6 +12,7 @@ type AddTaskRequest struct {
 	DelayBetweenCommands string `json:"delay_between_commands" binding:"omitempty"`
 }
 
+// TODO: remove this function after testing
 func HelloWorld(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Hello, World!",

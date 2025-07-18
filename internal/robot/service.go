@@ -190,7 +190,7 @@ func (s *Service) ExecuteRobotCommand(cmd RobotCommand) error {
 		}
 		robotState.Y++
 	case South:
-		if robotState.Y <= 0 {
+		if robotState.Y == 0 {
 			return fmt.Errorf("robot cannot move south, out of warehouse boundaries")
 		}
 		robotState.Y--
@@ -200,7 +200,7 @@ func (s *Service) ExecuteRobotCommand(cmd RobotCommand) error {
 		}
 		robotState.X++
 	case West:
-		if robotState.X <= 0 {
+		if robotState.X == 0 {
 			return fmt.Errorf("robot cannot move west, out of warehouse boundaries")
 		}
 		robotState.X--
