@@ -1,44 +1,121 @@
 package robot
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type TaskState int
+type RobotCommands []RobotCommand
+type CommandDuration time.Duration
+
+const defaultDelayBetweenCommands = CommandDuration(time.Second) // Default delay between commands is 1 second
+
+func (rc RobotCommands) String() string {
+	var builder strings.Builder
+	for _, cmd := range rc {
+		builder.WriteString(cmd.String() + " ")
+	}
+	commandsStr := builder.String()
+
+	return strings.TrimRight(commandsStr, " ")
+}
+
+func (rc RobotCommands) MarshalJSON() ([]byte, error) {
+	return json.Marshal(rc.String())
+}
+
+func (cd CommandDuration) String() string {
+	return time.Duration(cd).String()
+}
+
+func (cd CommandDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(cd.String())
+}
 
 // TaskState represents the state of a robot task.
 const (
 	Pending TaskState = iota
 	InProgress
 	Aborted
+	RequestCancellation // Represents a task that has been requested for cancellation via API
+	Canceled            // Represents a task that has been cancelled after cancellation request
 	Completed
+
+	Invalid // Represents an invalid state, can be used for error handling
 )
 
+// Convert TaskState to string for easy representation.
+func (s TaskState) String() string {
+	switch s {
+	case Pending:
+		return "Pending"
+	case InProgress:
+		return "InProgress"
+	case Aborted:
+		return "Aborted"
+	case RequestCancellation:
+		return "RequestCancellation"
+	case Canceled:
+		return "Canceled"
+	case Completed:
+		return "Completed"
+	case Invalid:
+		return "Invalid"
+	default:
+		return fmt.Sprintf("Unknown State %d", s)
+	}
+}
+
+func (s TaskState) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
 type RobotTask struct {
-	ID       string
-	Commands []RobotCommand
-	State    TaskState
-	DeltaX   int // Change in X coordinate
-	DeltaY   int // Change in Y coordinate
+	ID                   string          `json:"id"`                     // Unique identifier for the task
+	Commands             RobotCommands   `json:"commands"`               // List of commands to be executed by the robot
+	State                TaskState       `json:"state"`                  // Current state of the task
+	DelayBetweenCommands CommandDuration `json:"delay_between_commands"` // Delay between executing commands
+
+	SequenceNum int    `json:"sequence_num"` // Sequence number for the task, used for ordering tasks in the queue
+	Error       string `json:"error"`        // Error message if the task fails
+
+	// DeltaX and DeltaY represent the change in robot's position after executing the commands
+	DeltaX int `json:"-"` // Change in X coordinate
+	DeltaY int `json:"-"` // Change in Y coordinate
 }
 
 // NewTask creates a new RobotTask from a raw command sequence string.
 // It parses the string into individual RobotCommand values and initializes the task state to Pending.
-func NewTask(rawCmdSequence string) (*RobotTask, error) {
+func NewTask(rawCmdSequence string, delayBetweenCommandsStr string) (*RobotTask, error) {
+
+	delayBetweenCommands := defaultDelayBetweenCommands // Default delay is set to 1 second
+
+	if delayBetweenCommandsStr != "" {
+		// Parse the delay and set it in the task
+		duration, err := time.ParseDuration(delayBetweenCommandsStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid delay format: %v", err)
+		}
+		delayBetweenCommands = CommandDuration(duration) // Set the delay in the task
+	}
+
 	commands, deltaX, deltaY, err := parseCommands(rawCmdSequence)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RobotTask{
-		ID:       uuid.New().String(),
-		Commands: commands,
-		State:    Pending,
-		DeltaX:   deltaX,
-		DeltaY:   deltaY,
+		ID:                   uuid.New().String(),
+		Commands:             commands,
+		DelayBetweenCommands: delayBetweenCommands,
+		State:                Pending,
+		DeltaX:               deltaX,
+		DeltaY:               deltaY,
 	}, nil
 }
 
