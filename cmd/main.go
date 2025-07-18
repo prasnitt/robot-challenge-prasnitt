@@ -29,7 +29,7 @@ func main() {
 	router := gin.Default()
 
 	// Setup API routes
-	api.SetupRouter(router)
+	api.SetupRouter(router, robotService)
 
 	// Start the server
 	// TODO: Change the port to a configurable value

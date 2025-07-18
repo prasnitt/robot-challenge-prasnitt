@@ -1,11 +1,18 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/prasnitt/robot-challenge-prasnitt/internal/robot"
+)
 
-func SetupRouter(r *gin.Engine) {
+func SetupRouter(r *gin.Engine, robot robot.RobotService) {
 
 	apiGroup := r.Group("/api/v1")
 	{
-		apiGroup.GET("/hello", helloWorld)
+		// Experimental endpoint for testing
+		apiGroup.GET("/hello", HelloWorld)
+
+		// API endpoints for robot tasks
+		apiGroup.POST("/tasks", AddTask(robot))
 	}
 }
