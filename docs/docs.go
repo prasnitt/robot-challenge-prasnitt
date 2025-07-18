@@ -18,6 +18,26 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/robot/state": {
+            "get": {
+                "description": "Get the current state of the robot service including robot position, task count and tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Robot State"
+                ],
+                "summary": "Get the current state of the robot service",
+                "responses": {
+                    "200": {
+                        "description": "Current state of the robot service",
+                        "schema": {
+                            "$ref": "#/definitions/robot.ServiceState"
+                        }
+                    }
+                }
+            }
+        },
         "/robot/tasks": {
             "post": {
                 "description": "Add a new robot task with commands and optional delay",
@@ -45,6 +65,41 @@ const docTemplate = `{
                 "responses": {
                     "202": {
                         "description": "Task ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/robot/tasks/{id}/cancel": {
+            "put": {
+                "description": "Cancel a robot task by its ID, if the task is in progress or pending",
+                "tags": [
+                    "Robot Tasks"
+                ],
+                "summary": "Cancel a robot task by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Cancellation request accepted",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -89,6 +144,75 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "Job not found"
+                }
+            }
+        },
+        "robot.RobotState": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "description": "Current X coordinate of the robot",
+                    "type": "integer"
+                },
+                "y": {
+                    "description": "Current Y coordinate of the robot",
+                    "type": "integer"
+                }
+            }
+        },
+        "robot.RobotTask": {
+            "type": "object",
+            "properties": {
+                "commands": {
+                    "description": "List of commands to be executed by the robot",
+                    "type": "string",
+                    "example": "N E S W"
+                },
+                "delay_between_commands": {
+                    "description": "Delay between executing commands",
+                    "type": "string",
+                    "example": "1s"
+                },
+                "error": {
+                    "description": "Error message if the task fails",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique identifier for the task",
+                    "type": "string"
+                },
+                "sequence_num": {
+                    "description": "Sequence number for the task, used for ordering tasks in the queue",
+                    "type": "integer"
+                },
+                "state": {
+                    "description": "Current state of the task",
+                    "type": "string",
+                    "example": "Pending"
+                }
+            }
+        },
+        "robot.ServiceState": {
+            "type": "object",
+            "properties": {
+                "current_task_count": {
+                    "description": "Current number of tasks in the service",
+                    "type": "integer"
+                },
+                "robot_state": {
+                    "description": "Current state of the robot",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/robot.RobotState"
+                        }
+                    ]
+                },
+                "tasks": {
+                    "description": "Map of task IDs to RobotTask objects",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/robot.RobotTask"
+                    }
                 }
             }
         }

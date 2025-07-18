@@ -21,6 +21,55 @@ definitions:
         example: Job not found
         type: string
     type: object
+  robot.RobotState:
+    properties:
+      x:
+        description: Current X coordinate of the robot
+        type: integer
+      "y":
+        description: Current Y coordinate of the robot
+        type: integer
+    type: object
+  robot.RobotTask:
+    properties:
+      commands:
+        description: List of commands to be executed by the robot
+        example: N E S W
+        type: string
+      delay_between_commands:
+        description: Delay between executing commands
+        example: 1s
+        type: string
+      error:
+        description: Error message if the task fails
+        type: string
+      id:
+        description: Unique identifier for the task
+        type: string
+      sequence_num:
+        description: Sequence number for the task, used for ordering tasks in the
+          queue
+        type: integer
+      state:
+        description: Current state of the task
+        example: Pending
+        type: string
+    type: object
+  robot.ServiceState:
+    properties:
+      current_task_count:
+        description: Current number of tasks in the service
+        type: integer
+      robot_state:
+        allOf:
+        - $ref: '#/definitions/robot.RobotState'
+        description: Current state of the robot
+      tasks:
+        additionalProperties:
+          $ref: '#/definitions/robot.RobotTask'
+        description: Map of task IDs to RobotTask objects
+        type: object
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -30,6 +79,20 @@ info:
   title: Robot Warehouse System
   version: "1.0"
 paths:
+  /robot/state:
+    get:
+      description: Get the current state of the robot service including robot position,
+        task count and tasks
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Current state of the robot service
+          schema:
+            $ref: '#/definitions/robot.ServiceState'
+      summary: Get the current state of the robot service
+      tags:
+      - Robot State
   /robot/tasks:
     post:
       consumes:
@@ -56,6 +119,29 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Add a new robot task
+      tags:
+      - Robot Tasks
+  /robot/tasks/{id}/cancel:
+    put:
+      description: Cancel a robot task by its ID, if the task is in progress or pending
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Cancellation request accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Cancel a robot task by ID
       tags:
       - Robot Tasks
 swagger: "2.0"

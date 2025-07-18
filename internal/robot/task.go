@@ -9,8 +9,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// TaskState represents the state of a robot task.
+// @Description Current state of the robot task
+// @Enum Pending InProgress Aborted RequestCancellation Canceled Completed Invalid
 type TaskState int
+
+// RobotCommands represents a slice of RobotCommand values.
+// It provides methods for string representation and JSON marshaling.
+// @Description A string containing space-separated robot commands
+// @Example "N E S W"
 type RobotCommands []RobotCommand
+
+// CommandDuration represents the duration between commands.
+// @Description Duration between executing commands, can be used to control the speed of command execution.
+// @Example "1s"
 type CommandDuration time.Duration
 
 const defaultDelayBetweenCommands = CommandDuration(time.Second) // Default delay between commands is 1 second
@@ -38,6 +50,8 @@ func (cd CommandDuration) MarshalJSON() ([]byte, error) {
 }
 
 // TaskState represents the state of a robot task.
+// @Description Current state of the robot task
+// @Enum Pending InProgress Aborted RequestCancellation Canceled Completed Invalid
 const (
 	Pending TaskState = iota
 	InProgress
@@ -76,10 +90,10 @@ func (s TaskState) MarshalJSON() ([]byte, error) {
 }
 
 type RobotTask struct {
-	ID                   string          `json:"id"`                     // Unique identifier for the task
-	Commands             RobotCommands   `json:"commands"`               // List of commands to be executed by the robot
-	State                TaskState       `json:"state"`                  // Current state of the task
-	DelayBetweenCommands CommandDuration `json:"delay_between_commands"` // Delay between executing commands
+	ID                   string          `json:"id"`                                                       // Unique identifier for the task
+	Commands             RobotCommands   `json:"commands" swaggertype:"string" example:"N E S W"`          // List of commands to be executed by the robot
+	State                TaskState       `json:"state" swaggertype:"string" example:"Pending"`             // Current state of the task
+	DelayBetweenCommands CommandDuration `json:"delay_between_commands" swaggertype:"string" example:"1s"` // Delay between executing commands
 
 	SequenceNum int    `json:"sequence_num"` // Sequence number for the task, used for ordering tasks in the queue
 	Error       string `json:"error"`        // Error message if the task fails

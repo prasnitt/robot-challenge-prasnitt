@@ -55,6 +55,13 @@ func AddTask(service robot.RobotService) gin.HandlerFunc {
 	}
 }
 
+// GetState handles the request to get the current state of the robot service.
+// @Summary Get the current state of the robot service
+// @Description Get the current state of the robot service including robot position, task count and tasks
+// @Produce json
+// @Success 200 {object} robot.ServiceState "Current state of the robot service"
+// @Router /robot/state [get]
+// @Tags Robot State
 func GetState(service robot.RobotService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		state := service.CurrentState()
@@ -62,6 +69,14 @@ func GetState(service robot.RobotService) gin.HandlerFunc {
 	}
 }
 
+// CancelTask handles the request to cancel a robot task by its ID.
+// @Summary Cancel a robot task by ID
+// @Description Cancel a robot task by its ID, if the task is in progress or pending
+// @Param id path string true "Task ID"
+// @Success 202 {object} map[string]string "Cancellation request accepted"
+// @Failure 400 {object} ErrorResponse "Error message"
+// @Router /robot/tasks/{id}/cancel [put]
+// @Tags Robot Tasks
 func CancelTask(service robot.RobotService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
