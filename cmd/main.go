@@ -17,10 +17,11 @@ func main() {
 	defer cancel()
 
 	// Create a buffered channel for robot tasks
-	taskQueue := make(chan robot.RobotTask, 100) // Adjust buffer size as needed
+	// TODO: find a way to make this configurable
+	taskIdQueue := make(chan string, 100)
 
 	// Initialize the robot service
-	robotService := robot.NewService(ctx, taskQueue)
+	robotService := robot.NewService(ctx, taskIdQueue)
 
 	// Start the robot service in a separate goroutine
 	go robotService.Start()

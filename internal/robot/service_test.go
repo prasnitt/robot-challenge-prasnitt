@@ -15,9 +15,9 @@ func TestServiceImplementsRobotService(t *testing.T) {
 // TestNewService tests the NewService constructor.
 func TestNewService(t *testing.T) {
 	ctx := context.Background()
-	taskQueue := make(chan RobotTask, 10)
+	taskIdQueue := make(chan string, 10)
 
-	service := NewService(ctx, taskQueue)
+	service := NewService(ctx, taskIdQueue)
 
 	if service == nil {
 		t.Error("NewService() should return a non-nil service")
@@ -27,7 +27,7 @@ func TestNewService(t *testing.T) {
 		t.Error("NewService() should set the context correctly")
 	}
 
-	if service.taskQueue != taskQueue {
+	if service.taskIdQueue != taskIdQueue {
 		t.Error("NewService() should set the task queue correctly")
 	}
 

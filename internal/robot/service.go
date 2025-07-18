@@ -24,18 +24,18 @@ type RobotService interface {
 }
 
 type Service struct {
-	mu        sync.RWMutex    // Mutex for concurrent access
-	ctx       context.Context // Context for cancellation
-	state     ServiceState    // Current state of the robot service
-	taskQueue chan RobotTask  // Channel for incoming tasks
+	mu          sync.RWMutex    // Mutex for concurrent access
+	ctx         context.Context // Context for cancellation
+	state       ServiceState    // Current state of the robot service
+	taskIdQueue chan string     // Channel for incoming tasks
 }
 
 // NewService initializes a new robot service with an empty state and a task channel.
-func NewService(ctx context.Context, taskQueue chan RobotTask) *Service {
+func NewService(ctx context.Context, taskIdQueue chan string) *Service {
 	return &Service{
-		ctx:       ctx,
-		state:     NewServiceState(), // Initialize the service state
-		taskQueue: taskQueue,         // Buffered channel for tasks
+		ctx:         ctx,
+		state:       NewServiceState(), // Initialize the service state
+		taskIdQueue: taskIdQueue,       // Buffered channel for tasks
 	}
 }
 
@@ -48,8 +48,8 @@ func (s *Service) Start() {
 		case <-s.ctx.Done():
 			log.Println("Robot Service Stopping...")
 			return // Exit if the context is cancelled
-		case task := <-s.taskQueue:
-			s.HandleTask(task) // Process incoming tasks
+		case taskId := <-s.taskIdQueue:
+			s.HandleTask(taskId) // Process incoming tasks
 		}
 	}
 }
@@ -69,10 +69,9 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.taskQueue <- *task // Send the task to the queue
-
 	// Update the service state with the new task
 	s.state.Tasks[task.ID] = *task
+	s.taskIdQueue <- task.ID // Send the task to the queue
 
 	log.Printf("Task %s enqueued with commands: '%s' delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
 
@@ -80,21 +79,45 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 }
 
 func (s *Service) CancelTask(taskID string) error {
-	taskState, err := s.GetTaskState(taskID)
-	if err != nil {
-		return err
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	task, exists := s.state.Tasks[taskID]
+	if !exists {
+		return fmt.Errorf("task with ID %s not found", taskID)
 	}
 
-	if taskState != InProgress {
-		return fmt.Errorf("task %s is '%s' state and cannot be cancelled", taskID, taskState)
+	switch task.State {
+	case InProgress:
+		// Update the task state to RequestCancellation
+		log.Printf("Task %s is in progress, requesting cancellation", taskID)
+		task.State = RequestCancellation
+		s.state.Tasks[taskID] = task // Update the task in the state
+	case Pending:
+		// If the task is pending, we simply mark it as Canceled
+		log.Printf("Task %s is pending, marking as Canceled", taskID)
+		task.State = Canceled
+		s.state.Tasks[taskID] = task // Update the task in the state
+	default:
+		return fmt.Errorf("task %s is '%s' state and cannot be cancelled", taskID, task.State)
 	}
-
-	s.UpdateTaskState(taskID, RequestCancellation) // Update the task state to RequestCancellation
 
 	return nil // Placeholder for task cancellation logic
 }
 
-func (s *Service) HandleTask(task RobotTask) {
+func (s *Service) HandleTask(taskId string) {
+	task, exists := s.state.Tasks[taskId]
+	if !exists {
+		log.Printf("Task %s not found in service state", taskId)
+		return // Skip processing if the task does not exist
+	}
+
+	// The task should be in pending state when it is handled
+	if task.State != Pending {
+		log.Printf("Task %s is not in Pending state, current state: %s", task.ID, task.State)
+		return // Skip processing if the task is not in Pending state
+	}
+
 	log.Println("Started task:", task.ID)
 	s.UpdateTaskState(task.ID, InProgress)
 
