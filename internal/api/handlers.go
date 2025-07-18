@@ -8,7 +8,8 @@ import (
 )
 
 type AddTaskRequest struct {
-	Commands string `json:"commands" binding:"required"`
+	Commands             string `json:"commands" binding:"required"`
+	DelayBetweenCommands string `json:"delay_between_commands" binding:"omitempty"`
 }
 
 func HelloWorld(c *gin.Context) {
@@ -22,12 +23,11 @@ func AddTask(service robot.RobotService) gin.HandlerFunc {
 		var req AddTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-
 				"error": err.Error()})
 			return
 		}
 
-		taskID, err := service.EnqueueTask(req.Commands)
+		taskID, err := service.EnqueueTask(req.Commands, req.DelayBetweenCommands)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

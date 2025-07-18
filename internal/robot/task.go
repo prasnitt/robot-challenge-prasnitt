@@ -28,8 +28,12 @@ func (rc RobotCommands) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rc.String())
 }
 
+func (cd CommandDuration) String() string {
+	return time.Duration(cd).String()
+}
+
 func (cd CommandDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(cd).String())
+	return json.Marshal(cd.String())
 }
 
 // TaskState represents the state of a robot task.
@@ -83,17 +87,28 @@ type RobotTask struct {
 
 // NewTask creates a new RobotTask from a raw command sequence string.
 // It parses the string into individual RobotCommand values and initializes the task state to Pending.
-func NewTask(rawCmdSequence string) (*RobotTask, error) {
+func NewTask(rawCmdSequence string, delayBetweenCommandsStr string) (*RobotTask, error) {
+
+	delayBetweenCommands := defaultDelayBetweenCommands // Default delay is set to 1 second
+
+	if delayBetweenCommandsStr != "" {
+		// Parse the delay and set it in the task
+		duration, err := time.ParseDuration(delayBetweenCommandsStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid delay format: %v", err)
+		}
+		delayBetweenCommands = CommandDuration(duration) // Set the delay in the task
+	}
+
 	commands, deltaX, deltaY, err := parseCommands(rawCmdSequence)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RobotTask{
-		ID:       uuid.New().String(),
-		Commands: commands,
-		// TODO: get the delay from user input, if not provided, use default
-		DelayBetweenCommands: defaultDelayBetweenCommands,
+		ID:                   uuid.New().String(),
+		Commands:             commands,
+		DelayBetweenCommands: delayBetweenCommands,
 		State:                Pending,
 		DeltaX:               deltaX,
 		DeltaY:               deltaY,

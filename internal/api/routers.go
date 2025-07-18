@@ -14,7 +14,7 @@ func SetupRouter(router *gin.Engine, robot robot.RobotService) {
 
 		// API endpoints for robot tasks
 		apiGroup.POST("/tasks", AddTask(robot))
-		apiGroup.DELETE("/tasks/:id", CancelTask(robot))
+		apiGroup.PUT("/tasks/:id/cancel", CancelTask(robot))
 		apiGroup.GET("/state", GetState(robot))
 	}
 }

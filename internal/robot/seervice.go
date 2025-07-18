@@ -16,7 +16,7 @@ const (
 
 // RobotService defines the interface for the robot service.
 type RobotService interface {
-	EnqueueTask(commands string) (taskID string, err error)
+	EnqueueTask(commands string, delayBetweenCommands string) (taskID string, err error)
 
 	CancelTask(taskID string) error
 
@@ -59,8 +59,8 @@ func (s *Service) CurrentState() ServiceState {
 	return s.state
 }
 
-func (s *Service) EnqueueTask(commands string) (string, error) {
-	task, err := NewTask(commands)
+func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (string, error) {
+	task, err := NewTask(commands, delayBetweenCommands)
 	if err != nil {
 		return "", err
 	}
@@ -72,7 +72,7 @@ func (s *Service) EnqueueTask(commands string) (string, error) {
 	// Update the service state with the new task
 	s.state.Tasks[task.ID] = *task
 
-	log.Printf("Task %s enqueued with commands: %s", task.ID, commands)
+	log.Printf("Task %s enqueued with commands: '%s' delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
 
 	return task.ID, nil
 }
