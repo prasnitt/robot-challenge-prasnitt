@@ -20,13 +20,6 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"Job not found"`
 }
 
-// TODO: remove this function after testing
-func HelloWorld(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Hello, World!",
-	})
-}
-
 // AddTask handles the request to add a new robot task.
 // @Summary Add a new robot task
 // @Description Add a new robot task with commands and optional delay

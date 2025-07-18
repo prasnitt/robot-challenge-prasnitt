@@ -9,12 +9,6 @@ func SetupRouter(router *gin.Engine, robot robot.RobotService) {
 
 	v1 := router.Group("/api/v1")
 
-	helloWordGroup := v1.Group("/hello")
-	{
-		// Experimental endpoint for testing
-		helloWordGroup.GET("/", HelloWorld)
-	}
-
 	robotGroup := v1.Group("/robot")
 	{
 		// API endpoints for robot tasks
