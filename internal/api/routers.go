@@ -7,14 +7,13 @@ import (
 
 func SetupRouter(router *gin.Engine, robot robot.RobotService) {
 
-	apiGroup := router.Group("/api/v1")
-	{
-		// Experimental endpoint for testing
-		apiGroup.GET("/hello", HelloWorld)
+	v1 := router.Group("/api/v1")
 
+	robotGroup := v1.Group("/robot")
+	{
 		// API endpoints for robot tasks
-		apiGroup.POST("/tasks", AddTask(robot))
-		apiGroup.PUT("/tasks/:id/cancel", CancelTask(robot))
-		apiGroup.GET("/state", GetState(robot))
+		robotGroup.POST("/tasks", AddTask(robot))
+		robotGroup.PUT("/tasks/:id/cancel", CancelTask(robot))
+		robotGroup.GET("/state", GetState(robot))
 	}
 }
