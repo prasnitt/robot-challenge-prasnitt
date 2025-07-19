@@ -21,6 +21,7 @@ type MockRobotService struct {
 	cancelError       error
 	shouldFailEnqueue bool
 	shouldFailCancel  bool
+	eventChan         chan robot.TaskStatusUpdateEvent
 }
 
 type mockTask struct {
@@ -37,6 +38,7 @@ func NewMockRobotService() *MockRobotService {
 			CurTaskCount: 0,
 		},
 		enqueuedTasks: make([]mockTask, 0),
+		eventChan:     make(chan robot.TaskStatusUpdateEvent, 10), // Buffered for testing
 	}
 }
 
@@ -77,9 +79,21 @@ func (m *MockRobotService) CurrentState() robot.ServiceState {
 }
 
 func (m *MockRobotService) GetEventChannel() <-chan robot.TaskStatusUpdateEvent {
-	// Return a dummy channel for testing - this won't be used in current tests
-	eventChan := make(chan robot.TaskStatusUpdateEvent)
-	return eventChan
+	return m.eventChan
+}
+
+// Helper method for testing - allows sending events to the mock channel
+func (m *MockRobotService) SendTestEvent(taskID string, state robot.TaskState, errorMsg string) {
+	event := robot.TaskStatusUpdateEvent{
+		TaskID: taskID,
+		State:  state,
+		Error:  errorMsg,
+	}
+	select {
+	case m.eventChan <- event:
+	default:
+		// Channel full, ignore for testing
+	}
 }
 
 // Helper function to set up Gin router for testing
@@ -476,4 +490,26 @@ func TestAddTask_InvalidJSON(t *testing.T) {
 	if errorResponse.Error == "" {
 		t.Error("Expected error message in response")
 	}
+}
+
+// WebSocket Tests - Minimal Coverage
+func TestTaskStatusWebSocket_InvalidUpgrade(t *testing.T) {
+	mockService := NewMockRobotService()
+	router := setupRouter()
+
+	router.GET("/robot/events", TaskStatusWebSocket(mockService))
+	// Make a regular HTTP request (not WebSocket) to trigger upgrade failure
+	req, _ := http.NewRequest("GET", "/robot/events", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should fail to upgrade since it's not a WebSocket request
+	// Note: When WebSocket upgrade fails, the connection is closed and no JSON response is sent
+	if w.Code == http.StatusOK {
+		t.Error("Expected WebSocket upgrade to fail for regular HTTP request")
+	}
+	
+	// The response body might be empty or contain error text, but not JSON
+	responseBody := w.Body.String()
+	t.Logf("Response body: %s", responseBody) // Log for debugging
 }
