@@ -49,7 +49,10 @@ func (s *Service) Start() {
 			log.Println("Robot Service Stopping...")
 			return // Exit if the context is cancelled
 		case taskId := <-s.taskIdQueue:
-			s.HandleTask(taskId) // Process incoming tasks
+			err := s.ExecuteTask(taskId) // Process incoming tasks
+			if err != nil {
+				log.Printf("Error handling task %s: %v", taskId, err)
+			}
 		}
 	}
 }
@@ -111,20 +114,18 @@ func (s *Service) CancelTask(taskID string) error {
 	return nil // Placeholder for task cancellation logic
 }
 
-func (s *Service) HandleTask(taskId string) {
+func (s *Service) ExecuteTask(taskId string) error {
 	s.mu.RLock()
 	task, exists := s.state.Tasks[taskId]
 	s.mu.RUnlock()
 
 	if !exists {
-		log.Printf("Task %s not found in service state", taskId)
-		return // Skip processing if the task does not exist
+		return fmt.Errorf("Task %s not found in service state", taskId)
 	}
 
 	// The task should be in pending state when it is handled
 	if task.State != Pending {
-		log.Printf("Task %s is not in Pending state, current state: %s", task.ID, task.State)
-		return // Skip processing if the task is not in Pending state
+		return fmt.Errorf("Task %s is not in Pending state, current state: %s", task.ID, task.State)
 	}
 
 	log.Println("Started task:", task.ID)
@@ -133,9 +134,8 @@ func (s *Service) HandleTask(taskId string) {
 	// Check if task can be processed, robot must not be crossing the warehouse boundaries
 	if !s.IsTaskValid(task) {
 		s.UpdateTaskState(task.ID, Aborted)
-		log.Printf("Task %s is invalid and cannot be processed", task.ID)
 		s.UpdateTaskError(task.ID, "Task is invalid: out of warehouse boundaries, marking as Aborted")
-		return
+		return fmt.Errorf("Task %s is invalid and cannot be processed", task.ID)
 	}
 
 	// Run the task processing logic here
@@ -146,15 +146,14 @@ func (s *Service) HandleTask(taskId string) {
 		// Make sure if the task is requested for cancellation, we stop processing
 		state, err := s.GetTaskState(task.ID)
 		if err != nil {
-			log.Printf("Error getting task state for %s: %v", task.ID, err)
-			return // Stop processing if we can't get the task state
+			return fmt.Errorf("Error getting task state for %s: %v", task.ID, err)
 		}
 
 		if state == RequestCancellation {
 			log.Printf("Task %s has been requested for cancellation", task.ID)
 			s.UpdateTaskError(task.ID, "Task cancellation requested by user")
 			s.UpdateTaskState(task.ID, Canceled)
-			return // Stop processing the task
+			return nil // Stop processing the task if cancellation is requested
 		}
 
 		// Simulate delay between commands
@@ -164,10 +163,9 @@ func (s *Service) HandleTask(taskId string) {
 		err = s.ExecuteRobotCommand(cmd)
 
 		if err != nil {
-			log.Printf("Error executing command '%s' for task %s: %v", cmd, task.ID, err)
 			s.UpdateTaskError(task.ID, fmt.Sprintf("Error executing command '%s': %v", cmd, err))
 			s.UpdateTaskState(task.ID, Aborted) // Update the task state to Aborted
-			return                              // Stop processing the task on error
+			return fmt.Errorf("Error executing command '%s' for task %s: %v", cmd, task.ID, err)
 		}
 
 		robotState := s.GetRobotState() // Get the current robot state after executing the command
@@ -177,6 +175,8 @@ func (s *Service) HandleTask(taskId string) {
 	// Update the task state to Completed
 	s.UpdateTaskState(task.ID, Completed)
 	log.Printf("Task %s completed successfully", task.ID)
+
+	return nil
 }
 
 // Execute a robot command and update the robot's position
