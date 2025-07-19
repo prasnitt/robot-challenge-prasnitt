@@ -447,7 +447,7 @@ func TestAddTask_InvalidJSON(t *testing.T) {
 	router.POST("/robot/tasks", AddTask(mockService))
 
 	// Create invalid JSON
-	invalidJSON := `{"commands": "N E", "delay_between_commands": 1s}`
+	invalidJSON := `Invalid JSON`
 
 	req, _ := http.NewRequest("POST", "/robot/tasks", strings.NewReader(invalidJSON))
 	req.Header.Set("Content-Type", "application/json")
