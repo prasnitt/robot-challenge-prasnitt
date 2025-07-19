@@ -148,10 +148,10 @@ This implementation provides a complete solution for the robot warehouse challen
 
 | API Endpoint | Screenshot | Description |
 |--------------|------------|-------------|
-| **GET /robot/state** | ![Init state](screenshots/init-state.jpg) | Shows robot at origin (0,0) with empty task queue |
-| **POST /robot/tasks** | ![Init state](screenshots/create-a-task.jpg) | Create task with commands "N E S W" and 5s delay |
-| **GET /robot/state** (after task) | ![Init state](screenshots/state-after-task-completion.jpg) | Shows robot moved back to origin with completed task |
-| **PUT /robot/tasks/{id}/cancel** | ![Init state](screenshots/cancel-task-example.jpg) | Demonstrates real-time task cancellation |
+| **GET /robot/state** | ![Robot at origin](screenshots/init-state.jpg) | Shows robot at origin (0,0) with empty task queue |
+| **POST /robot/tasks** | ![Task creation](screenshots/create-a-task.jpg) | Create task with commands "N E S W" and 5s delay |
+| **GET /robot/state** (after task) | ![State after task completion](screenshots/state-after-task-completion.jpg) | Shows robot moved back to origin with completed task |
+| **PUT /robot/tasks/{id}/cancel** | ![Task cancellation](screenshots/cancel-task-example.jpg) | Demonstrates real-time task cancellation |
 
 ### **Suggested API Testing Flows**
 
