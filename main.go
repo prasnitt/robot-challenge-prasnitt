@@ -29,8 +29,8 @@ func main() {
 	defer cancel()
 
 	// Create a buffered channel for robot tasks
-	// TODO: find a way to make this configurable
-	taskIdQueue := make(chan string, 100)
+	maxNumTasks := 100 // Maximum number of tasks in the queue
+	taskIdQueue := make(chan string, maxNumTasks)
 
 	// Initialize the robot service
 	robotService := robot.NewService(ctx, taskIdQueue)
