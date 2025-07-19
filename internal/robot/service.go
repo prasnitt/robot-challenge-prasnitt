@@ -23,19 +23,29 @@ type RobotService interface {
 	CurrentState() ServiceState
 }
 
+// Websocket response for task status updates.
+// @Description Websocket response for task status updates.
+type TaskStatusUpdateEvent struct {
+	TaskID string    `json:"task_id" example:"12345"`    // Unique identifier for the task
+	State  TaskState `json:"state" example:"InProgress"` // Current state of the task
+	Error  string    `json:"error,omitempty" example:""` // Error message if any
+}
+
 type Service struct {
-	mu          sync.RWMutex    // Mutex for concurrent access
-	ctx         context.Context // Context for cancellation
-	state       ServiceState    // Current state of the robot service
-	taskIdQueue chan string     // Channel for incoming tasks
+	mu          sync.RWMutex               // Mutex for concurrent access
+	ctx         context.Context            // Context for cancellation
+	state       ServiceState               // Current state of the robot service
+	taskIdQueue chan string                // Channel for incoming tasks
+	eventChan   chan TaskStatusUpdateEvent // Channel for broadcasting task status updates
 }
 
 // NewService initializes a new robot service with an empty state and a task channel.
 func NewService(ctx context.Context, taskIdQueue chan string) *Service {
 	return &Service{
 		ctx:         ctx,
-		state:       NewServiceState(), // Initialize the service state
-		taskIdQueue: taskIdQueue,       // Buffered channel for tasks
+		state:       NewServiceState(),                     // Initialize the service state
+		taskIdQueue: taskIdQueue,                           // Buffered channel for tasks
+		eventChan:   make(chan TaskStatusUpdateEvent, 100), // Buffered channel for events
 	}
 }
 
@@ -76,11 +86,13 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 
 	s.state.CurTaskCount++                  // Increment the current task count
 	task.SequenceNum = s.state.CurTaskCount // Assign a sequence number to the task
-
 	s.state.Tasks[task.ID] = *task
 	s.taskIdQueue <- task.ID // Send the task to the queue
 
 	log.Printf("Task %s enqueued with commands: '%s', delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
+
+	// Publish event for new task creation
+	go s.publishEvent(task.ID, task.State, "")
 
 	return task.ID, nil
 }
@@ -227,6 +239,9 @@ func (s *Service) UpdateTaskState(taskID string, state TaskState) {
 		task.State = state
 		s.state.Tasks[taskID] = task // Update the task in the state
 		log.Printf("Task %s updated to state: %s", taskID, state)
+
+		// Publish event for WebSocket clients
+		go s.publishEvent(taskID, state, task.Error)
 	} else {
 		log.Printf("Task %s not found for state update", taskID)
 	}
@@ -240,6 +255,9 @@ func (s *Service) UpdateTaskError(taskID string, errMsg string) {
 		task.Error = errMsg          // Update the error message in the task
 		s.state.Tasks[taskID] = task // Update the task in the state
 		log.Printf("Task %s updated with error: %s", taskID, errMsg)
+
+		// Publish event for WebSocket clients with error information
+		go s.publishEvent(taskID, task.State, errMsg)
 	} else {
 		log.Printf("Task %s not found for error update", taskID)
 	}
@@ -272,4 +290,28 @@ func (s *Service) IsTaskValid(task RobotTask) bool {
 	}
 
 	return true
+}
+
+// GetEventChannel returns the channel for task status update events.
+// This channel can be used by WebSocket handlers to listen for real-time updates.
+func (s *Service) GetEventChannel() <-chan TaskStatusUpdateEvent {
+	return s.eventChan
+}
+
+// publishEvent sends a task status update event to the event channel.
+// This method is non-blocking and will drop events if the channel is full.
+func (s *Service) publishEvent(taskID string, state TaskState, errorMsg string) {
+	event := TaskStatusUpdateEvent{
+		TaskID: taskID,
+		State:  state,
+		Error:  errorMsg,
+	}
+
+	// Non-blocking send to avoid deadlocks
+	select {
+	case s.eventChan <- event:
+		log.Printf("Published event for task %s: state=%s", taskID, state)
+	default:
+		log.Printf("Event channel full, dropped event for task %s", taskID)
+	}
 }
