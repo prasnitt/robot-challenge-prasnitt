@@ -21,21 +21,34 @@ type RobotService interface {
 	CancelTask(taskID string) error
 
 	CurrentState() ServiceState
+
+	GetEventChannel() <-chan TaskStatusUpdateEvent
+}
+
+// Websocket response for task status updates.
+// @Description Websocket response for task status updates.
+type TaskStatusUpdateEvent struct {
+	TaskID    string    `json:"task_id" example:"12345"`                         // Unique identifier for the task
+	State     TaskState `json:"state" swaggertype:"string" example:"InProgress"` // Current state of the task
+	Error     string    `json:"error,omitempty" example:""`                      // Error message if any
+	Timestamp time.Time `json:"timestamp" example:"2024-01-15T10:30:00Z"`        // Timestamp when the event occurred
 }
 
 type Service struct {
-	mu          sync.RWMutex    // Mutex for concurrent access
-	ctx         context.Context // Context for cancellation
-	state       ServiceState    // Current state of the robot service
-	taskIdQueue chan string     // Channel for incoming tasks
+	mu          sync.RWMutex               // Mutex for concurrent access
+	ctx         context.Context            // Context for cancellation
+	state       ServiceState               // Current state of the robot service
+	taskIdQueue chan string                // Channel for incoming tasks
+	eventChan   chan TaskStatusUpdateEvent // Channel for broadcasting task status updates
 }
 
 // NewService initializes a new robot service with an empty state and a task channel.
 func NewService(ctx context.Context, taskIdQueue chan string) *Service {
 	return &Service{
 		ctx:         ctx,
-		state:       NewServiceState(), // Initialize the service state
-		taskIdQueue: taskIdQueue,       // Buffered channel for tasks
+		state:       NewServiceState(),                     // Initialize the service state
+		taskIdQueue: taskIdQueue,                           // Buffered channel for tasks
+		eventChan:   make(chan TaskStatusUpdateEvent, 100), // Buffered channel for events
 	}
 }
 
@@ -76,11 +89,13 @@ func (s *Service) EnqueueTask(commands string, delayBetweenCommands string) (str
 
 	s.state.CurTaskCount++                  // Increment the current task count
 	task.SequenceNum = s.state.CurTaskCount // Assign a sequence number to the task
-
 	s.state.Tasks[task.ID] = *task
 	s.taskIdQueue <- task.ID // Send the task to the queue
 
 	log.Printf("Task %s enqueued with commands: '%s', delay between commands: '%s' ", task.ID, commands, task.DelayBetweenCommands)
+
+	// Publish event for new task creation
+	go s.publishEvent(task.ID, task.State, "")
 
 	return task.ID, nil
 }
@@ -99,19 +114,26 @@ func (s *Service) CancelTask(taskID string) error {
 		// Update the task state to RequestCancellation
 		log.Printf("Task %s is in progress, requesting cancellation", taskID)
 		task.State = RequestCancellation
-
 		s.state.Tasks[taskID] = task // Update the task in the state
+
+		// Publish event for cancellation request
+		go s.publishEvent(taskID, RequestCancellation, "")
+
 	case Pending:
 		// If the task is pending, we simply mark it as Canceled
 		log.Printf("Task %s is pending, marking as Canceled", taskID)
 		task.Error = "Pending Task cancelled by user"
 		task.State = Canceled
 		s.state.Tasks[taskID] = task // Update the task in the state
+
+		// Publish event for immediate cancellation
+		go s.publishEvent(taskID, Canceled, task.Error)
+
 	default:
 		return fmt.Errorf("task %s is '%s' state and cannot be cancelled", taskID, task.State)
 	}
 
-	return nil // Placeholder for task cancellation logic
+	return nil
 }
 
 func (s *Service) ExecuteTask(taskId string) error {
@@ -227,6 +249,9 @@ func (s *Service) UpdateTaskState(taskID string, state TaskState) {
 		task.State = state
 		s.state.Tasks[taskID] = task // Update the task in the state
 		log.Printf("Task %s updated to state: %s", taskID, state)
+
+		// Publish event for WebSocket clients
+		go s.publishEvent(taskID, state, task.Error)
 	} else {
 		log.Printf("Task %s not found for state update", taskID)
 	}
@@ -240,6 +265,9 @@ func (s *Service) UpdateTaskError(taskID string, errMsg string) {
 		task.Error = errMsg          // Update the error message in the task
 		s.state.Tasks[taskID] = task // Update the task in the state
 		log.Printf("Task %s updated with error: %s", taskID, errMsg)
+
+		// Publish event for WebSocket clients with error information
+		go s.publishEvent(taskID, task.State, errMsg)
 	} else {
 		log.Printf("Task %s not found for error update", taskID)
 	}
@@ -272,4 +300,29 @@ func (s *Service) IsTaskValid(task RobotTask) bool {
 	}
 
 	return true
+}
+
+// GetEventChannel returns the channel for task status update events.
+// This channel can be used by WebSocket handlers to listen for real-time updates.
+func (s *Service) GetEventChannel() <-chan TaskStatusUpdateEvent {
+	return s.eventChan
+}
+
+// publishEvent sends a task status update event to the event channel.
+// This method is non-blocking and will drop events if the channel is full.
+func (s *Service) publishEvent(taskID string, state TaskState, errorMsg string) {
+	event := TaskStatusUpdateEvent{
+		TaskID:    taskID,
+		State:     state,
+		Error:     errorMsg,
+		Timestamp: time.Now(),
+	}
+
+	// Non-blocking send to avoid deadlocks
+	select {
+	case s.eventChan <- event:
+		log.Printf("Published event for task %s: state=%s at %s", taskID, state, event.Timestamp.Format(time.RFC3339))
+	default:
+		log.Printf("Event channel full, dropped event for task %s", taskID)
+	}
 }

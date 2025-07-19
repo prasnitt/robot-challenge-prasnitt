@@ -10,9 +10,11 @@ This implementation provides a complete solution for the robot warehouse challen
 
 ### **🎯 Solution Approach**
 - **RESTful API Design**: Built using Go Gin framework for high-performance HTTP routing
+- **Real-Time WebSocket Updates**: Provides live task status notifications via WebSocket connections
 - **Concurrent Task Processing**: Implements goroutines and channels for non-blocking task execution
 - **Thread-Safe Operations**: Uses mutexes to ensure data consistency across concurrent operations
 - **Robust State Management**: Comprehensive task lifecycle with states (Pending → InProgress → Completed/Canceled/Aborted)
+- **Event-Driven Architecture**: Uses channels to publish task state changes to connected clients
 - **Boundary Validation**: Prevents robot from moving outside the 10x10 warehouse grid
 - **Graceful Task Cancellation**: Supports real-time task cancellation even during execution
 
@@ -34,18 +36,18 @@ This implementation provides a complete solution for the robot warehouse challen
 │  │ Swagger UI       │    │                 │    │  ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤      │ │
 │  └──────────────────┘    │ ┌─────────────┐ │    │  │ │ │ │ │🤖 │ │ │ │ │      │ │
 │                          │ │ Task Queue  │ │    │  ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤      │ │
-│                          │ │(Channel)    │ │    │  │ │ │ │ │ │ │ │ │ │ │      │ │
-│                          │ │Max: 100     │ │    │  ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤      │ │
-│                          │ └─────────────┘ │    │  │ │ │ │ │ │ │ │ │ │ │      │ │
-│                          │                 │    │  └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘      │ │
-│                          │ ┌─────────────┐ │    │  (0,0)              (10,0)  │ │
-│                          │ │Service State│ │    └─────────────────────────────┘ │
-│                          │ │- Robot Pos  │ │                                    │
-│                          │ │- Tasks Map  │ │    ┌─────────────────────────────┐ │
-│                          │ │- Task Count │ │    │         Task States         │ │
-│                          │ └─────────────┘ │    │                             │ │
-│                          └─────────────────┘    │                             │ │
-│                                                 │        Task State Flow      │ │
+│  ┌──────────────────┐    │ │(Channel)    │ │    │  │ │ │ │ │ │ │ │ │ │ │      │ │
+│  │   WebSocket      │    │ │Max: 100     │ │    │  ├─┼─┼─┼─┼─┼─┼─┼─┼─┼─┤      │ │
+│  │   Endpoint       │    │ └─────────────┘ │    │  │ │ │ │ │ │ │ │ │ │ │      │ │
+│  │                  │◄───┤                 │    │  └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘      │ │
+│  │ /api/v1/robot/   │    │ ┌─────────────┐ │    │  (0,0)              (10,0)  │ │
+│  │ events           │    │ │Service State│ │    └─────────────────────────────┘ │
+│  │                  │    │ │- Robot Pos  │ │                                    │
+│  │ Real-time Events │◄───┤ │- Tasks Map  │ │    ┌─────────────────────────────┐ │
+│  │ - Task Status    │    │ │- Task Count │ │    │                             │ │
+│  │ - State Changes  │    │ │- Event Ch.  │ │    │                             │ │
+│  │ - Timestamps     │    │ └─────────────┘ │    │                             │ │
+│  └──────────────────┘    └─────────────────┘    │      Task State Flow        │ │
 │  ┌──────────────────────────────────────────┐   │                             │ │
 │  │              Concurrency                 │   │      Pending                │ │
 │  │                                          │   │       │   │                 │ │
@@ -53,7 +55,9 @@ This implementation provides a complete solution for the robot warehouse challen
 │  │ • Mutex for thread-safe operations       │   │       ▼                     │ │
 │  │ • Context for graceful shutdown          │   │  InProgress                 │ │
 │  │ • Channels for task communication        │   │    │    │    │              │ │
-│  └──────────────────────────────────────────┘   │    │    │    └─► Aborted    │ │
+│  │ • Event channels for WebSocket updates   │   │    │    │    └─► Aborted    │ │
+│  │ • Real-time event broadcasting           │   │    │    │                   │ │
+│  └──────────────────────────────────────────┘   │    │    │                   │ │
 │                                                 │    │    │                   │ │
 │                                                 │    │    └─► RequestCancel.. │ │
 │                                                 │    │             │          │ │
@@ -69,13 +73,17 @@ This implementation provides a complete solution for the robot warehouse challen
 
 ```
 📥 HTTP Request → 🎯 Gin Router → 🤖 Robot Service → 📊 State Management → 🏭 Task Execution
+                                          ↓
+                                 🔄 Event Channel → 📡 WebSocket → 💻 Real-time Client Updates
 ```
 
 1. **API Layer**: Handles HTTP requests with validation and response formatting
 2. **Service Layer**: Manages robot logic, task queuing, and state transitions
 3. **Task Processing**: Executes commands sequentially with configurable delays
-4. **State Persistence**: Maintains robot position and task status in memory
-5. **Concurrency Control**: Uses channels for task queuing and mutexes for data safety
+4. **Event Broadcasting**: Publishes task state changes via event channels
+5. **WebSocket Layer**: Delivers real-time updates to connected clients
+6. **State Persistence**: Maintains robot position and task status in memory
+7. **Concurrency Control**: Uses channels for task queuing and mutexes for data safety
 
 ### **🧪 Quality Assurance**
 - **Comprehensive Unit Tests**: 88.9% code coverage with 50+ test cases
@@ -88,6 +96,7 @@ This implementation provides a complete solution for the robot warehouse challen
 | Package | Version | Purpose | Description |
 |---------|---------|---------|-------------|
 | [Gin](https://github.com/gin-gonic/gin) | v1.10.1 | Web Framework | High-performance HTTP web framework |
+| [Gorilla WebSocket](https://github.com/gorilla/websocket) | v1.5.3 | Real-time Communication | WebSocket implementation for live task updates |
 | [Swaggo](https://github.com/swaggo/swag) | v1.16.5 | API Documentation | Swagger documentation generator |
 | [Gin-Swagger](https://github.com/swaggo/gin-swagger) | v1.6.0 | Swagger UI | Swagger UI middleware for Gin |
 | [UUID](https://github.com/google/uuid) | v1.6.0 | ID Generation | Unique task identifier generation |
@@ -137,10 +146,35 @@ This implementation provides a complete solution for the robot warehouse challen
 
 ### **📝 Usage Instructions**
 
+#### **REST API Testing**
 1. **Open Swagger UI** at `http://localhost:8080/swagger/index.html`
 2. **Test API endpoints** using the interactive interface
 3. **Monitor logs** in the terminal to see task execution flow
 4. **Check robot movement** by calling the `/robot/state` endpoint
+
+#### **WebSocket Real-Time Updates**
+For real-time task status notifications, connect to the WebSocket endpoint:
+
+**WebSocket URL**: `ws://localhost:8080/api/v1/robot/events`
+
+**Using wscat (install with `npm install -g wscat`):**
+```bash
+# Connect to WebSocket for live task updates
+wscat -c ws://localhost:8080/api/v1/robot/events
+
+# You'll receive JSON messages like:
+# {"task_id":"fdceaccc-5a27-4d9a-a17f-524c264f1741","state":"Pending","timestamp":"2025-07-20T00:24:47.638253+12:00"}
+
+# {"task_id":"fdceaccc-5a27-4d9a-a17f-524c264f1741","state":"InProgress","timestamp":"2025-07-20T00:24:47.6396285+12:00"}
+```
+
+**Testing Flow with WebSocket:**
+1. Open terminal and connect: `wscat -c ws://localhost:8080/api/v1/robot/events`
+2. In another terminal/browser, create a task via REST API
+3. Watch real-time status updates in the WebSocket connection
+4. Status updates will show: Pending → InProgress → Completed/Canceled
+
+**Note**: Current WebSocket implementation supports single client connections. Multi-client broadcast is planned as a future enhancement.
 
 ---
 
@@ -152,36 +186,47 @@ This implementation provides a complete solution for the robot warehouse challen
 | **POST /robot/tasks** | ![Task creation](screenshots/create-a-task.jpg) | Create task with commands "N E S W" and 5s delay |
 | **GET /robot/state** (after task) | ![State after task completion](screenshots/state-after-task-completion.jpg) | Shows robot moved back to origin with completed task |
 | **PUT /robot/tasks/{id}/cancel** | ![Task cancellation](screenshots/cancel-task-example.jpg) | Demonstrates real-time task cancellation |
+| **WebSocket Events** | ![real-time task status](screenshots/realtime_update_on_websocket.jpg) | Real-time task status updates  about task creation -> InProgress -> Cancellation|
 
 ### **Suggested API Testing Flows**
 
 1. **Basic Flow**: Create task → Check state → Watch logs for execution
-2. **Cancellation Flow**: Create long task → Cancel mid-execution → Verify cancellation
-3. **Boundary Testing**: Create task that exceeds warehouse limits → See validation error
-4. **Multiple Tasks**: Create several tasks → Observe sequential processing
+2. **Real-Time Flow**: Connect WebSocket → Create task → Watch live status updates
+3. **Cancellation Flow**: Create long task → Cancel mid-execution → Verify cancellation via WebSocket
+4. **Boundary Testing**: Create task that exceeds warehouse limits → See validation error
+5. **Multiple Tasks**: Create several tasks → Observe sequential processing via WebSocket events
 
 ---
 
 ## 🔮 Future Improvements
 
+### **WebSocket & Real-Time Enhancements**
+1. **Multi-Client WebSocket Hub**: Implement broadcast system to support multiple simultaneous WebSocket connections for task status updates
+
+
 ### **Configuration Management**
-1. **Environment Variables**: Replace hardcoded values (port 8080, warehouse size 10) with configurable environment variables
-2. **Config Files**: Support JSON/YAML configuration files for deployment flexibility
+4. **Environment Variables**: Replace hardcoded values (port 8080, warehouse size 10) with configurable environment variables
+5. **Config Files**: Support JSON/YAML configuration files for deployment flexibility
 
 ### **Scalability Enhancements**
-4. **Infinite Task Queue**: Replace limited channel (100 tasks) with persistent queue (e.g. RabbitMQ/Database).
-5. **Database Integration**: Store robot state and task history in PostgreSQL/MongoDB
-6. **Horizontal Scaling**: Support multiple service instances with load balancing
+6. **Infinite Task Queue**: Replace limited channel (100 tasks) with persistent queue (e.g. RabbitMQ/Database)
+7. **Database Integration**: Store robot state and task history in PostgreSQL/MongoDB for persistence across restarts
+8. **Horizontal Scaling**: Support multiple service instances with load balancing and shared state
 
 ### **Advanced Robot Intelligence**
-7. **Path Optimization**: Instead of step-by-step commands, provide destination coordinates and let robot calculate optimal path
-8. **Obstacle Avoidance**: Implement collision detection and dynamic path recalculation
-9. **Multi-Robot Support**: Support multiple robots working simultaneously in the same warehouse
+9. **Path Optimization**: Instead of step-by-step commands, provide destination coordinates and let robot calculate optimal path
+10. **Obstacle Avoidance**: Implement collision detection and dynamic path recalculation
+11. **Multi-Robot Support**: Support multiple robots working simultaneously in the same warehouse
 
 ### **User Experience**
-10. **Real-time Dashboard**: Web-based UI showing live robot position and task status
-11. **WebSocket Integration**: Real-time notifications when tasks complete
-12. **Task Scheduling**: Support for delayed task execution and recurring tasks
+12. **Real-time Dashboard**: Web-based UI showing live robot position and task status with WebSocket integration
+13. **Task Scheduling**: Support for delayed task execution and recurring tasks
+14. **Event History**: Persistent logging of all task events and state changes with query capabilities
+
+### **Alternative Event Mechanisms**
+15. **Server-Sent Events (SSE)**: Alternative to WebSocket for one-way real-time updates with automatic reconnection
+16. **Webhook Notifications**: HTTP callback support for external systems to receive task completion notifications
+17. **Message Queue Integration**: Support for external message brokers (RabbitMQ, Apache Kafka) for enterprise-grade event distribution
 
 
 ---
@@ -193,6 +238,20 @@ This implementation provides a complete solution for the robot warehouse challen
 | `GET` | `/api/v1/robot/state` | Get current robot state and tasks | None | `ServiceState` |
 | `POST` | `/api/v1/robot/tasks` | Create new robot task | `AddTaskRequest` | `{task_id}` |
 | `PUT` | `/api/v1/robot/tasks/{id}/cancel` | Cancel existing task | None | `{message}` |
+| `WebSocket` | `/api/v1/robot/events` | Real-time task status updates | N/A | Task event stream |
+
+### **WebSocket Event Format**
+```json
+{
+  "task_id": "fdceaccc-5a27-4d9a-a17f-524c264f1741",
+  "state": "InProgress",
+  "timestamp": "2025-07-20T00:24:47.6396285+12:00"
+}
+```
+
+**State Values**: `Pending`, `InProgress`, `Completed`, `Canceled`, `Aborted`, `RequestCancellation`
+
+**Note**: WebSocket currently supports single client connections. Multi-client broadcast support is planned for future releases.
 
 ---
 

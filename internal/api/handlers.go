@@ -1,9 +1,11 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/prasnitt/robot-challenge-prasnitt/internal/robot"
 )
 
@@ -83,14 +85,58 @@ func CancelTask(service robot.RobotService) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
-
 		c.JSON(http.StatusAccepted, gin.H{"message": "Task cancellation requested successfully"})
 	}
 }
 
-// TODO: Add unit tests for the API handlers
-//  Case 1: Call state endpoint and check if the state is returned correctly wit initial values
-//  Case 2: Call add task endpoint with valid commands and check if the task is added
-//  Case 3: Call add task endpoint with invalid commands and check if the error is returned
-//  Case 4: Call add task endpoint with empty commands and check if the error is returned
-//  Case 5: Call add task endpoint with valid commands and check if the task ID is returned
+// WebSocket upgrader configuration
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// Allow connections from any origin in development
+		// TODO: In production, we should validate the origin properly
+		return true
+	},
+}
+
+// TaskStatusWebSocket handles WebSocket connections for real-time task status updates.
+// @Summary WebSocket endpoint for real-time task status updates
+// @Description Establishes a WebSocket connection to receive real-time task status updates. This endpoint requires a WebSocket client (not accessible via Swagger UI). Use tools like Postman, wscat, or the provided HTML test page.
+// @Produce json
+// @Success 101 {object} robot.TaskStatusUpdateEvent "WebSocket connection established, events will be sent as JSON"
+// @Failure 400 {object} ErrorResponse "Failed to upgrade connection"
+// @Router /robot/events [get]
+// @Tags Robot Events
+func TaskStatusWebSocket(service robot.RobotService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Upgrade HTTP connection to WebSocket
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("Failed to upgrade connection: %v", err)
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Failed to upgrade to WebSocket"})
+			return
+		}
+		defer conn.Close()
+		log.Printf("WebSocket connection established from %s", c.ClientIP())
+
+		// Get the event channel from the service
+		eventChannel := service.GetEventChannel()
+
+		// Listen for task status events and send them to the WebSocket client
+		for {
+			select {
+			case event := <-eventChannel:
+				// Send the event to the WebSocket client
+				if err := conn.WriteJSON(event); err != nil {
+					log.Printf("Failed to send event to WebSocket client: %v", err)
+					return
+				}
+				log.Printf("Sent event to WebSocket client: task=%s, state=%s", event.TaskID, event.State)
+
+			case <-c.Request.Context().Done():
+				// Client disconnected
+				log.Printf("WebSocket client disconnected: %s", c.ClientIP())
+				return
+			}
+		}
+	}
+}
