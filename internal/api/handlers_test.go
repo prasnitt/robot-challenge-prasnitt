@@ -508,7 +508,7 @@ func TestTaskStatusWebSocket_InvalidUpgrade(t *testing.T) {
 	if w.Code == http.StatusOK {
 		t.Error("Expected WebSocket upgrade to fail for regular HTTP request")
 	}
-	
+
 	// The response body might be empty or contain error text, but not JSON
 	responseBody := w.Body.String()
 	t.Logf("Response body: %s", responseBody) // Log for debugging
