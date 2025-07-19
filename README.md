@@ -169,7 +169,7 @@ This implementation provides a complete solution for the robot warehouse challen
 2. **Config Files**: Support JSON/YAML configuration files for deployment flexibility
 
 ### **Scalability Enhancements**
-4. **Infinite Task Queue**: Replace limited channel (100 tasks) with persistent queue (e.g. RabbitMQ/Database)
+4. **Infinite Task Queue**: Replace limited channel (100 tasks) with persistent queue (e.g. RabbitMQ/Database).
 5. **Database Integration**: Store robot state and task history in PostgreSQL/MongoDB
 6. **Horizontal Scaling**: Support multiple service instances with load balancing
 
