@@ -443,3 +443,130 @@ func TestHandleTaskCancellation(t *testing.T) {
 		t.Errorf("Expected task state to be RequestCancellation, got %s", state)
 	}
 }
+
+// TestExecuteTask tests the ExecuteTask method with simple test cases.
+func TestExecuteTask(t *testing.T) {
+	ctx := context.Background()
+	taskIdQueue := make(chan string, 10)
+	service := NewService(ctx, taskIdQueue)
+
+	// Test successful task execution
+	t.Run("Execute valid task successfully", func(t *testing.T) {
+		// Set robot at safe position
+		service.SetRobotState(RobotState{X: 5, Y: 5})
+
+		taskID, err := service.EnqueueTask("N E", "10ms")
+		if err != nil {
+			t.Fatalf("Failed to enqueue task: %v", err)
+		}
+
+		// Execute the task
+		err = service.ExecuteTask(taskID)
+		if err != nil {
+			t.Errorf("Expected successful execution, got error: %v", err)
+		}
+
+		// Verify task completed
+		state, _ := service.GetTaskState(taskID)
+		if state != Completed {
+			t.Errorf("Expected task state Completed, got %s", state)
+		}
+
+		// Verify robot moved correctly
+		robotState := service.GetRobotState()
+		if robotState.X != 6 || robotState.Y != 6 {
+			t.Errorf("Expected robot at (6,6), got (%d,%d)", robotState.X, robotState.Y)
+		}
+	})
+
+	// Test task execution with non-existent task
+	t.Run("Execute non-existent task", func(t *testing.T) {
+		err := service.ExecuteTask("non-existent-id")
+		if err == nil {
+			t.Error("Expected error for non-existent task")
+		}
+	})
+
+	// Test task execution with invalid state
+	t.Run("Execute task in wrong state", func(t *testing.T) {
+		taskID, err := service.EnqueueTask("N", "10ms")
+		if err != nil {
+			t.Fatalf("Failed to enqueue task: %v", err)
+		}
+
+		// Set task to completed state
+		service.UpdateTaskState(taskID, Completed)
+
+		// Try to execute
+		err = service.ExecuteTask(taskID)
+		if err == nil {
+			t.Error("Expected error when executing task in wrong state")
+		}
+	})
+
+	// Test task execution that exceeds boundaries
+	t.Run("Execute task that exceeds boundaries", func(t *testing.T) {
+		// Set robot near boundary
+		service.SetRobotState(RobotState{X: 9, Y: 9})
+
+		taskID, err := service.EnqueueTask("N E", "10ms")
+		if err != nil {
+			t.Fatalf("Failed to enqueue task: %v", err)
+		}
+
+		// Execute the task
+		err = service.ExecuteTask(taskID)
+		if err == nil {
+			t.Error("Expected error for boundary-exceeding task")
+		}
+
+		// Verify task was aborted
+		state, _ := service.GetTaskState(taskID)
+		if state != Aborted {
+			t.Errorf("Expected task state Aborted, got %s", state)
+		}
+	})
+}
+
+// TestExecuteTaskErrorHandling tests error handling scenarios.
+func TestExecuteTaskErrorHandling(t *testing.T) {
+	ctx := context.Background()
+	taskIdQueue := make(chan string, 10)
+	service := NewService(ctx, taskIdQueue)
+
+	// Test task cancellation during execution
+	t.Run("Task cancellation during execution", func(t *testing.T) {
+		service.SetRobotState(RobotState{X: 5, Y: 5})
+
+		taskID, err := service.EnqueueTask("N N N", "20ms")
+		if err != nil {
+			t.Fatalf("Failed to enqueue task: %v", err)
+		}
+
+		// Start execution in goroutine
+		done := make(chan error, 1)
+		go func() {
+			done <- service.ExecuteTask(taskID)
+		}()
+
+		// Wait a bit then request cancellation
+		time.Sleep(10 * time.Millisecond)
+		service.UpdateTaskState(taskID, RequestCancellation)
+
+		// Wait for execution to complete
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("ExecuteTask returned error: %v", err)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Task execution did not complete within timeout")
+		}
+
+		// Verify task was canceled
+		state, _ := service.GetTaskState(taskID)
+		if state != Canceled {
+			t.Errorf("Expected task state Canceled, got %s", state)
+		}
+	})
+}
