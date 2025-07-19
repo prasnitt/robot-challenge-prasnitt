@@ -21,14 +21,16 @@ type RobotService interface {
 	CancelTask(taskID string) error
 
 	CurrentState() ServiceState
+
+	GetEventChannel() <-chan TaskStatusUpdateEvent
 }
 
 // Websocket response for task status updates.
 // @Description Websocket response for task status updates.
 type TaskStatusUpdateEvent struct {
-	TaskID string    `json:"task_id" example:"12345"`    // Unique identifier for the task
-	State  TaskState `json:"state" example:"InProgress"` // Current state of the task
-	Error  string    `json:"error,omitempty" example:""` // Error message if any
+	TaskID string    `json:"task_id" example:"12345"`                         // Unique identifier for the task
+	State  TaskState `json:"state" swaggertype:"string" example:"InProgress"` // Current state of the task
+	Error  string    `json:"error,omitempty" example:""`                      // Error message if any
 }
 
 type Service struct {
@@ -111,19 +113,26 @@ func (s *Service) CancelTask(taskID string) error {
 		// Update the task state to RequestCancellation
 		log.Printf("Task %s is in progress, requesting cancellation", taskID)
 		task.State = RequestCancellation
-
 		s.state.Tasks[taskID] = task // Update the task in the state
+
+		// Publish event for cancellation request
+		go s.publishEvent(taskID, RequestCancellation, "")
+
 	case Pending:
 		// If the task is pending, we simply mark it as Canceled
 		log.Printf("Task %s is pending, marking as Canceled", taskID)
 		task.Error = "Pending Task cancelled by user"
 		task.State = Canceled
 		s.state.Tasks[taskID] = task // Update the task in the state
+
+		// Publish event for immediate cancellation
+		go s.publishEvent(taskID, Canceled, task.Error)
+
 	default:
 		return fmt.Errorf("task %s is '%s' state and cannot be cancelled", taskID, task.State)
 	}
 
-	return nil // Placeholder for task cancellation logic
+	return nil
 }
 
 func (s *Service) ExecuteTask(taskId string) error {

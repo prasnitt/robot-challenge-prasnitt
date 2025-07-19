@@ -70,6 +70,22 @@ definitions:
         description: Map of task IDs to RobotTask objects
         type: object
     type: object
+  robot.TaskStatusUpdateEvent:
+    description: Websocket response for task status updates.
+    properties:
+      error:
+        description: Error message if any
+        example: ""
+        type: string
+      state:
+        description: Current state of the task
+        example: InProgress
+        type: string
+      task_id:
+        description: Unique identifier for the task
+        example: "12345"
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -79,6 +95,25 @@ info:
   title: Robot Warehouse System
   version: "1.0"
 paths:
+  /robot/events:
+    get:
+      description: Establishes a WebSocket connection to receive real-time task status
+        updates. This endpoint requires a WebSocket client (not accessible via Swagger
+        UI). Use tools like Postman, wscat, or the provided HTML test page.
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: WebSocket connection established, events will be sent as JSON
+          schema:
+            $ref: '#/definitions/robot.TaskStatusUpdateEvent'
+        "400":
+          description: Failed to upgrade connection
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: WebSocket endpoint for real-time task status updates
+      tags:
+      - Robot Events
   /robot/state:
     get:
       description: Get the current state of the robot service including robot position,

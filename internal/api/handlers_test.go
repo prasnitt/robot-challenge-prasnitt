@@ -76,6 +76,12 @@ func (m *MockRobotService) CurrentState() robot.ServiceState {
 	return m.state
 }
 
+func (m *MockRobotService) GetEventChannel() <-chan robot.TaskStatusUpdateEvent {
+	// Return a dummy channel for testing - this won't be used in current tests
+	eventChan := make(chan robot.TaskStatusUpdateEvent)
+	return eventChan
+}
+
 // Helper function to set up Gin router for testing
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)

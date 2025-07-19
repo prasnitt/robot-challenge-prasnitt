@@ -18,6 +18,32 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/robot/events": {
+            "get": {
+                "description": "Establishes a WebSocket connection to receive real-time task status updates. This endpoint requires a WebSocket client (not accessible via Swagger UI). Use tools like Postman, wscat, or the provided HTML test page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Robot Events"
+                ],
+                "summary": "WebSocket endpoint for real-time task status updates",
+                "responses": {
+                    "101": {
+                        "description": "WebSocket connection established, events will be sent as JSON",
+                        "schema": {
+                            "$ref": "#/definitions/robot.TaskStatusUpdateEvent"
+                        }
+                    },
+                    "400": {
+                        "description": "Failed to upgrade connection",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/robot/state": {
             "get": {
                 "description": "Get the current state of the robot service including robot position, task count and tasks",
@@ -213,6 +239,27 @@ const docTemplate = `{
                     "additionalProperties": {
                         "$ref": "#/definitions/robot.RobotTask"
                     }
+                }
+            }
+        },
+        "robot.TaskStatusUpdateEvent": {
+            "description": "Websocket response for task status updates.",
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Error message if any",
+                    "type": "string",
+                    "example": ""
+                },
+                "state": {
+                    "description": "Current state of the task",
+                    "type": "string",
+                    "example": "InProgress"
+                },
+                "task_id": {
+                    "description": "Unique identifier for the task",
+                    "type": "string",
+                    "example": "12345"
                 }
             }
         }
