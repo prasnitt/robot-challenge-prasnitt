@@ -28,9 +28,10 @@ type RobotService interface {
 // Websocket response for task status updates.
 // @Description Websocket response for task status updates.
 type TaskStatusUpdateEvent struct {
-	TaskID string    `json:"task_id" example:"12345"`                         // Unique identifier for the task
-	State  TaskState `json:"state" swaggertype:"string" example:"InProgress"` // Current state of the task
-	Error  string    `json:"error,omitempty" example:""`                      // Error message if any
+	TaskID    string    `json:"task_id" example:"12345"`                         // Unique identifier for the task
+	State     TaskState `json:"state" swaggertype:"string" example:"InProgress"` // Current state of the task
+	Error     string    `json:"error,omitempty" example:""`                      // Error message if any
+	Timestamp time.Time `json:"timestamp" example:"2024-01-15T10:30:00Z"`        // Timestamp when the event occurred
 }
 
 type Service struct {
@@ -311,15 +312,16 @@ func (s *Service) GetEventChannel() <-chan TaskStatusUpdateEvent {
 // This method is non-blocking and will drop events if the channel is full.
 func (s *Service) publishEvent(taskID string, state TaskState, errorMsg string) {
 	event := TaskStatusUpdateEvent{
-		TaskID: taskID,
-		State:  state,
-		Error:  errorMsg,
+		TaskID:    taskID,
+		State:     state,
+		Error:     errorMsg,
+		Timestamp: time.Now(),
 	}
 
 	// Non-blocking send to avoid deadlocks
 	select {
 	case s.eventChan <- event:
-		log.Printf("Published event for task %s: state=%s", taskID, state)
+		log.Printf("Published event for task %s: state=%s at %s", taskID, state, event.Timestamp.Format(time.RFC3339))
 	default:
 		log.Printf("Event channel full, dropped event for task %s", taskID)
 	}

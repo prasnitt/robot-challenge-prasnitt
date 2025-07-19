@@ -260,6 +260,11 @@ const docTemplate = `{
                     "description": "Unique identifier for the task",
                     "type": "string",
                     "example": "12345"
+                },
+                "timestamp": {
+                    "description": "Timestamp when the event occurred",
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
                 }
             }
         }
